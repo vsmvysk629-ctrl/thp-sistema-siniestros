@@ -2,25 +2,22 @@
 
 Sistema propio de THP Seguros para dar seguimiento a los siniestros de **autos** dentro de Quálitas, Atlas y Potosí, de principio a fin. Es independiente de SIGA (que no maneja siniestros) y de THP OS.
 
-## Qué hace hoy (Etapa 1A)
-- **Usuarios y roles**: administrador, siniestros (oficina) y vendedor (solo ve los siniestros de sus clientes, puede reportar y agregar notas).
-- **Clientes y pólizas de autos** con datos del vehículo (captura mínima; la cartera completa sigue en SIGA).
-- **Siniestro**: folio interno (SIN-2026-0001), número de reporte de cabina, número de siniestro, ajustador, tipo, responsabilidad, taller, deducible, monto estimado y monto autorizado, terceros.
-- **Flujo de autos** (`contracts/flujo.ts`) con tres rutas:
-  - Reparación: reportado → ajustador → valuación → orden de admisión → en reparación → listo → entregado → cerrado.
-  - Pago de daños: … valuación → pago de daños autorizado → pago confirmado → cerrado.
-  - Pérdida total: … → dictamen → documentos para indemnización → finiquito → pago confirmado → cerrado.
-  - Más rechazado y cancelado (con motivo obligatorio).
-- **Regla clave**: orden de admisión, pago de daños, pérdida total, finiquito y pago confirmado **exigen el folio o referencia de la aseguradora**. El monto autorizado solo se captura en esos pasos.
-- **Historial completo** por siniestro: alta, cambios de estado (con folio), ediciones (qué campos), notas y terceros, con autor y hora.
-- **Bandeja** con filtros (estado, aseguradora, tipo, búsqueda por folio/cliente/póliza/placas) y marca de "sin movimiento 7+ días".
+## Qué hace hoy (Etapa 1A, rehecha con base en el prototipo de la oficina)
+- **Usuarios y roles**: administrador (todo), ejecutivo (ve todo; modifica solo los siniestros a su cargo) y solo consulta (lectura y reportes). La matriz está en la pantalla *Usuarios y permisos* y la aplica la API.
+- **Contratantes y pólizas** de cualquier ramo (autos, flotillas, GMM, AP, vida, daños, casa, RC, transportes). Captura mínima; no se carga la cartera real.
+- **Siniestro**: folio interno THP-S-AA-NNNN, contratante, póliza, compañía, ramo y tipo, asegurado/afectado, fechas, número de siniestro de la aseguradora, ejecutivo responsable, próxima acción y fecha compromiso. En autos además: reporte de cabina, ajustador, taller, conductor, lugar, responsabilidad, deducible y terceros.
+- **Trámite en 11 estatus** (`contracts/flujo.ts`): reportado → recopilación de documentos → documentación completa → ingresado a aseguradora → en revisión → (info. adicional) → autorizado → pago parcial → pagado → cerrado, más rechazado (con apelación).
+- **Reglas**: documentación completa solo sin faltantes; ingresado exige número o folio de la aseguradora; autorizado exige folio del dictamen y monto; pago parcial y pagado **solo** se alcanzan registrando pagos con referencia y sin pasar de lo autorizado; rechazo, info. adicional y cierre piden motivo.
+- **Expediente** con pestañas: datos generales, documentación (checklist por ramo y tipo con estados), financiero (gastado, reclamado, no procedente, deducible, coaseguro, autorizado, pagado, saldo; conceptos con dictamen; pagos) y bitácora (todo cambio con autor y hora, más notas).
+- **Tablero**: 10 indicadores, alertas (compromiso vencido, info. pedida, rechazado, documentos pendientes, listo para ingresar, 15+ días sin respuesta, pago pendiente), abiertos por ramo y próximos compromisos.
+- **Bandeja** con filtros (búsqueda, estatus, ejecutivo, compañía, ramo) y **reportes** por ramo, compañía, ejecutivo y tiempos. Exporta a Excel (CSV) y a PDF (impresión); el expediente también se imprime completo.
 
 ## Desarrollo
 ```bash
 npm install
 cp .env.example .env          # pon DATABASE_URL de una base de desarrollo
 npm run db:migrate
-npm run db:seed               # datos FICTICIOS: admin / oficina / vendedor
+npm run db:seed               # datos FICTICIOS: admin, laura, oscar, marta, consulta · Demo2026demo
 npm run dev                   # http://localhost:3000
 ```
 
@@ -34,6 +31,6 @@ Las pruebas borran y recrean la base, así que solo corren contra una base cuyo 
 `npm run build && npm start` (o el `Dockerfile`). Al arrancar aplica migraciones, crea Quálitas, Atlas y Potosí si faltan y crea el primer administrador con `ADMIN_USERNAME`/`ADMIN_PASSWORD` (deberá cambiar la contraseña al entrar). Variables en `.env.example`.
 
 ## Siguientes etapas
-- 1B Expediente: checklist de documentos y archivos.
-- 1C Seguimiento: próxima acción, fecha compromiso y alertas diarias (tareas y borradores por aprobar; nada se envía al cliente).
-- 1D Tablero por aseguradora y tiempos por etapa.
+- 1B Expediente: subir y descargar archivos de cada documento.
+- 1C Seguimiento: proceso diario que genera tareas y borradores por aprobar (nada se envía al cliente).
+- Ajustes que pida la oficina al usar esta versión.

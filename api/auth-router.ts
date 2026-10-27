@@ -19,6 +19,7 @@ export function usuarioPublico(u: s.User) {
   return {
     id: u.id,
     nombre: u.nombre,
+    puesto: u.puesto,
     username: u.username,
     role: u.role,
     debeCambiarPassword: u.debeCambiarPassword,
@@ -35,7 +36,7 @@ export const authRouter = createRouter({
     .input(z.object({ username: z.string().trim().min(1).max(64), password: z.string().min(1).max(200) }))
     .mutation(async ({ ctx, input }) => {
       const db = getDb();
-      const user = await db.query.users.findFirst({ where: eq(s.users.username, input.username.toLowerCase()) });
+      const [user] = await db.select().from(s.users).where(eq(s.users.username, input.username.toLowerCase()));
       if (!user || !user.passwordHash || !user.activo) {
         await verifyPassword(input.password, HASH_FALSO);
         throw credencialInvalida();
@@ -54,7 +55,7 @@ export const authRouter = createRouter({
           .where(eq(s.users.id, user.id));
         throw credencialInvalida();
       }
-      await db.update(s.users).set({ intentosFallidos: 0, bloqueadoHasta: null }).where(eq(s.users.id, user.id));
+      await db.update(s.users).set({ intentosFallidos: 0, bloqueadoHasta: null, ultimoAcceso: new Date() }).where(eq(s.users.id, user.id));
       const token = await signSessionToken({ uid: user.id, pv: huellaPassword(user.passwordHash) });
       ctx.resHeaders.append("set-cookie", sessionCookie(ctx.req.headers, token, Math.floor(Session.maxAgeMs / 1000)));
       return usuarioPublico(user);

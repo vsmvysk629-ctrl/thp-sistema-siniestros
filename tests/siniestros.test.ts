@@ -1,141 +1,236 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { eq } from "drizzle-orm";
 import * as s from "@db/schema";
 import { getDb } from "../api/queries/connection";
 import { baseLimpia, callerDe, crearUsuario } from "./helpers";
 import app from "../api/boot";
 import { asegurarAseguradoras } from "../api/auth-router";
 
-// Datos ficticios: ningún nombre, póliza ni placa es real.
-let admin: s.User, oficina: s.User, vend1: s.User, vend2: s.User;
-let polizaV1: number, polizaV2: number;
+// Datos ficticios: ningún nombre, póliza ni número es real.
+let admin: s.User, ej1: s.User, ej2: s.User, consulta: s.User;
+let contratante: number, polizaAutos: number, polizaGmm: number;
+const ase: Record<string, number> = {};
+const anio = String(new Date().getFullYear()).slice(-2);
 
 beforeAll(async () => {
   await baseLimpia();
-  admin = await crearUsuario("admin", "admin");
-  oficina = await crearUsuario("oficina", "siniestros");
-  vend1 = await crearUsuario("vend1", "vendedor");
-  vend2 = await crearUsuario("vend2", "vendedor");
-  const db = getDb();
   await asegurarAseguradoras();
-  const ofi = callerDe(oficina);
-  const c1 = await ofi.catalogos.crearCliente({ nombre: "Cliente Ficticio Uno", vendedorId: vend1.id });
-  const c2 = await ofi.catalogos.crearCliente({ nombre: "Cliente Ficticio Dos", vendedorId: vend2.id });
-  polizaV1 = (await ofi.catalogos.crearPoliza({ numero: "PRB-0001", aseguradoraId: 1, clienteId: c1.id, cobertura: "amplia", vehiculoMarca: "Marca", vehiculoModelo: "Modelo", vehiculoAnio: 2022, vehiculoPlacas: "AAA000A" })).id;
-  polizaV2 = (await ofi.catalogos.crearPoliza({ numero: "PRB-0002", aseguradoraId: 2, clienteId: c2.id, cobertura: "amplia" })).id;
+  for (const a of await getDb().select().from(s.aseguradoras)) ase[a.nombre] = a.id;
+  admin = await crearUsuario("admin", "admin");
+  ej1 = await crearUsuario("ej1", "ejecutivo");
+  ej2 = await crearUsuario("ej2", "ejecutivo");
+  consulta = await crearUsuario("consulta", "consulta");
+  const c = callerDe(ej1);
+  contratante = (await c.catalogos.crearContratante({ nombre: "Transportes Ficticios SA", tipoPersona: "moral", ejecutivoId: ej1.id })).id;
+  polizaAutos = (await c.catalogos.crearPoliza({ numero: "PRB-AUT-1", aseguradoraId: ase["Quálitas"], contratanteId: contratante, ramo: "flot", descripcion: "5 unidades" })).id;
+  polizaGmm = (await c.catalogos.crearPoliza({ numero: "PRB-GMM-1", aseguradoraId: ase["Atlas"], contratanteId: contratante, ramo: "gmmc" })).id;
 });
 
-const alta = (poliza: number, extra: Record<string, unknown> = {}) => ({
-  polizaId: poliza,
-  tipo: "colision" as const,
-  fechaOcurrido: "2026-10-20 14:30",
-  responsabilidad: "por_definir" as const,
+const alta = (extra: Record<string, unknown> = {}) => ({
+  contratanteId: contratante,
+  polizaId: polizaAutos,
+  aseguradoraId: ase["Potosí"], // se ignora: manda la póliza
+  ramo: "gmmi" as const, // se ignora: manda la póliza
+  tipo: "Colisión",
+  afectado: "Unidad 01 · Camión ficticio",
+  fechaOcurrido: "2026-10-20",
+  ejecutivoId: ej1.id,
   ...extra,
 });
 
-describe("siniestros", () => {
-  it("da de alta con folio interno consecutivo y deja el alta en el historial", async () => {
-    const a = await callerDe(oficina).siniestros.create(alta(polizaV1, { numeroReporte: "REP-1" }));
-    const b = await callerDe(oficina).siniestros.create(alta(polizaV2));
-    const anio = new Date().getFullYear();
-    expect(a.folio).toBe(`SIN-${anio}-0001`);
-    expect(b.folio).toBe(`SIN-${anio}-0002`);
-    const det = await callerDe(oficina).siniestros.get({ id: a.id });
-    expect(det.aseguradoraId).toBe(1);
-    expect(det.estado).toBe("reportado");
-    expect(det.responsableId).toBe(oficina.id);
-    expect(det.eventos.map((e) => e.tipo)).toEqual(["alta"]);
+async function docsValidados(id: number) {
+  await getDb().update(s.documentos).set({ estado: "validado" }).where(eq(s.documentos.siniestroId, id));
+}
+
+describe("alta y expediente", () => {
+  it("da folio consecutivo, toma ramo y compañía de la póliza y arma la documentación", async () => {
+    const a = await callerDe(ej1).siniestros.create(alta());
+    const b = await callerDe(ej1).siniestros.create(alta({ polizaId: polizaGmm, tipo: "Reembolso", afectado: "Empleado ficticio" }));
+    expect(a.folio).toBe(`THP-S-${anio}-0001`);
+    expect(b.folio).toBe(`THP-S-${anio}-0002`);
+    const x = await callerDe(consulta).siniestros.get({ id: a.id });
+    expect(x.ramo).toBe("flot");
+    expect(x.aseguradora.nombre).toBe("Quálitas");
+    expect(x.estado).toBe("reportado");
+    expect(x.documentos.map((d) => d.nombre)).toContain("Declaración del conductor");
+    expect(x.documentos.every((d) => d.estado === "pendiente")).toBe(true);
+    expect(x.proximaAccion).toBe("Solicitar documentación al asegurado");
+    expect(x.eventos[0].tipo).toBe("alta");
+    expect(x.puedeEditar).toBe(false); // consulta solo ve
+    const y = await callerDe(ej1).siniestros.get({ id: b.id });
+    expect(y.documentos.map((d) => d.nombre)).toContain("Informe médico");
   });
 
-  it("recorre la ruta de pérdida total hasta cerrar, con folio y monto autorizado", async () => {
-    const ofi = callerDe(oficina);
-    const { id } = await ofi.siniestros.create(alta(polizaV1, { tipo: "robo_total", numeroReporte: "REP-RT" }));
-    await expect(ofi.siniestros.cambiarEstado({ id, destino: "ajustador_asignado" })).rejects.toThrow(/ajustador/);
-    await ofi.siniestros.actualizar({ id, datos: { ajustadorNombre: "Ajustador Ficticio", numeroSiniestro: "SIN-ASEG-1" } });
-    await ofi.siniestros.cambiarEstado({ id, destino: "ajustador_asignado" });
-    await expect(ofi.siniestros.cambiarEstado({ id, destino: "perdida_total" })).rejects.toThrow(/folio/);
-    await ofi.siniestros.cambiarEstado({ id, destino: "perdida_total", folio: "DICT-1" });
-    await ofi.siniestros.cambiarEstado({ id, destino: "documentos_indemnizacion" });
-    await ofi.siniestros.cambiarEstado({ id, destino: "finiquito", folio: "FIN-1", montoAutorizado: "250000.00" });
-    await ofi.siniestros.cambiarEstado({ id, destino: "pago_confirmado", folio: "TRANSF-1" });
-    await ofi.siniestros.cambiarEstado({ id, destino: "cerrado" });
-    await expect(ofi.siniestros.cambiarEstado({ id, destino: "reportado" })).rejects.toThrow(/No se puede pasar/);
-
-    const det = await ofi.siniestros.get({ id });
-    expect(det.estado).toBe("cerrado");
-    expect(det.montoAutorizado).toBe("250000.00");
-    const cambios = det.eventos.filter((e) => e.tipo === "cambio_estado").reverse();
-    expect(cambios.map((e) => e.estadoNuevo)).toEqual([
-      "ajustador_asignado", "perdida_total", "documentos_indemnizacion", "finiquito", "pago_confirmado", "cerrado",
-    ]);
-    expect(cambios.find((e) => e.estadoNuevo === "pago_confirmado")?.folio).toBe("TRANSF-1");
-    expect(cambios.every((e) => e.autor?.nombre === "Usuario oficina")).toBe(true);
-    expect(det.eventos.some((e) => e.tipo === "edicion" && /ajustador/.test(e.nota ?? ""))).toBe(true);
+  it("también acepta siniestros sin póliza en catálogo", async () => {
+    const r = await callerDe(ej1).siniestros.create(alta({ polizaId: null, polizaTexto: "POR-CAPTURAR", aseguradoraId: ase["Potosí"], ramo: "autos" }));
+    const x = await callerDe(ej1).siniestros.get({ id: r.id });
+    expect(x.aseguradora.nombre).toBe("Potosí");
+    expect(x.ramo).toBe("autos");
   });
 
-  it("no acepta monto autorizado sin autorización de la aseguradora", async () => {
-    const ofi = callerDe(oficina);
-    const { id } = await ofi.siniestros.create(alta(polizaV1, { numeroReporte: "REP-M", ajustadorNombre: "Aj" }));
-    await expect(
-      ofi.siniestros.cambiarEstado({ id, destino: "ajustador_asignado", montoAutorizado: "1000" }),
-    ).rejects.toThrow(/monto autorizado/);
-    // Tampoco se cuela por la edición de datos
-    await ofi.siniestros.actualizar({ id, datos: { montoAutorizado: "999" } as never });
-    expect((await ofi.siniestros.get({ id })).montoAutorizado).toBeNull();
+  it("un ejecutivo no asigna siniestros a otro; el admin sí", async () => {
+    await expect(callerDe(ej1).siniestros.create(alta({ ejecutivoId: ej2.id }))).rejects.toThrow(/administrador/);
+    const r = await callerDe(admin).siniestros.create(alta({ ejecutivoId: ej2.id }));
+    expect((await callerDe(admin).siniestros.get({ id: r.id })).ejecutivoId).toBe(ej2.id);
+    await expect(callerDe(admin).siniestros.create(alta({ ejecutivoId: consulta.id }))).rejects.toThrow(/responsable/);
   });
 
-  it("el vendedor solo ve y reporta siniestros de sus clientes, y no cambia estados", async () => {
-    const v1 = callerDe(vend1);
-    const propio = await v1.siniestros.create(alta(polizaV1));
-    expect((await v1.siniestros.get({ id: propio.id })).responsableId).toBeNull();
-    await expect(v1.siniestros.create(alta(polizaV2))).rejects.toThrow(/no encontrad/i);
+  it("rechaza fecha de ocurrencia futura", async () => {
+    await expect(callerDe(ej1).siniestros.create(alta({ fechaOcurrido: "2099-01-01" }))).rejects.toThrow(/futura/);
+  });
+});
 
-    const ajeno = await callerDe(oficina).siniestros.create(alta(polizaV2));
-    await expect(v1.siniestros.get({ id: ajeno.id })).rejects.toThrow(/no encontrado/i);
-    await expect(v1.siniestros.agregarNota({ id: ajeno.id, nota: "x" })).rejects.toThrow(/no encontrado/i);
-    const lista = await v1.siniestros.list({});
-    expect(lista.length).toBeGreaterThan(0);
-    expect(lista.every((r) => r.cliente === "Cliente Ficticio Uno")).toBe(true);
+describe("trámite completo", () => {
+  it("de reportado a cerrado con documentos, folio, autorización y pagos", async () => {
+    const c = callerDe(ej1);
+    const { id } = await c.siniestros.create(alta({ polizaId: polizaGmm, tipo: "Reembolso", afectado: "Empleado ficticio" }));
+    await c.siniestros.cambiarEstado({ id, destino: "recopilacion" });
+    await expect(c.siniestros.cambiarEstado({ id, destino: "documentacion_completa" })).rejects.toThrow(/Faltan 11/);
 
-    await expect(v1.siniestros.cambiarEstado({ id: propio.id, destino: "cancelado", nota: "x" })).rejects.toThrow(/permiso/);
-    await expect(v1.siniestros.actualizar({ id: propio.id, datos: { lugar: "x" } })).rejects.toThrow(/permiso/);
-    await v1.siniestros.agregarNota({ id: propio.id, nota: "El cliente mandó fotos" });
-    const det = await callerDe(oficina).siniestros.get({ id: propio.id });
-    expect(det.eventos[0].nota).toBe("El cliente mandó fotos");
+    // Documentos: uno a la vez queda en bitácora
+    const x0 = await c.siniestros.get({ id });
+    await c.expediente.documentoEstado({ id: x0.documentos[0].id, estado: "recibido" });
+    await c.expediente.documentoEstado({ id: x0.documentos[0].id, estado: "validado" });
+    await docsValidados(id);
+    await c.siniestros.cambiarEstado({ id, destino: "documentacion_completa" });
+    await expect(c.siniestros.cambiarEstado({ id, destino: "ingresado" })).rejects.toThrow(/número de siniestro/);
+    await c.siniestros.cambiarEstado({ id, destino: "ingresado", folio: "GM-FICT-1", proximaAccion: "Esperar dictamen", fechaCompromiso: "2026-11-04" });
+    await c.siniestros.cambiarEstado({ id, destino: "info_adicional", nota: "Piden desglose de la cuenta" });
+    await c.siniestros.cambiarEstado({ id, destino: "en_revision" });
+
+    // Conceptos: reclamado y no procedente salen de su suma
+    await c.expediente.guardarConcepto({ siniestroId: id, concepto: "Hospital", importe: "98,400", noProcedente: "6000", dictamen: "parcial" });
+    await c.expediente.guardarConcepto({ siniestroId: id, concepto: "Farmacia", importe: "13550", noProcedente: "8150", dictamen: "por_corregir" });
+    await expect(c.expediente.guardarConcepto({ siniestroId: id, concepto: "X", importe: "10", noProcedente: "20", dictamen: "parcial" })).rejects.toThrow(/mayor/);
+
+    await expect(c.expediente.registrarPago({ siniestroId: id, concepto: "Pago 1", fecha: "2026-10-20", monto: "100", forma: "transferencia", referencia: "T-1" })).rejects.toThrow(/autorizó/);
+    await expect(c.siniestros.cambiarEstado({ id, destino: "autorizado", montoAutorizado: "90000" })).rejects.toThrow(/folio/);
+    await c.siniestros.cambiarEstado({ id, destino: "autorizado", folio: "DICT-FICT-1", montoAutorizado: "90000" });
+    await expect(c.siniestros.cambiarEstado({ id, destino: "pagado" })).rejects.toThrow(/Financiero/);
+
+    await expect(c.expediente.registrarPago({ siniestroId: id, concepto: "Pago 1", fecha: "2026-10-20", monto: "50000", forma: "transferencia", referencia: " " })).rejects.toThrow(/referencia/);
+    const p1 = await c.expediente.registrarPago({ siniestroId: id, concepto: "Pago 1 · anticipo", fecha: "2026-10-20", monto: "50000", forma: "transferencia", referencia: "TRF-FICT-1" });
+    expect(p1.estado).toBe("pago_parcial");
+    await expect(c.expediente.registrarPago({ siniestroId: id, concepto: "Pago 2", fecha: "2026-10-21", monto: "40000.01", forma: "transferencia", referencia: "TRF-FICT-2" })).rejects.toThrow(/excede/);
+    const p2 = await c.expediente.registrarPago({ siniestroId: id, concepto: "Pago 2 · finiquito", fecha: "2026-10-21", monto: "40000", forma: "transferencia", referencia: "TRF-FICT-2" });
+    expect(p2.estado).toBe("pagado");
+    expect((await c.siniestros.get({ id })).proximaAccion).toMatch(/recibió el pago/);
+    await c.siniestros.cambiarEstado({ id, destino: "cerrado" });
+    await expect(c.siniestros.cambiarEstado({ id, destino: "en_revision" })).rejects.toThrow(/No se puede pasar/);
+
+    const x = await c.siniestros.get({ id });
+    expect(x.estado).toBe("cerrado");
+    expect(x.numeroSiniestro).toBe("GM-FICT-1");
+    expect(x.fechaIngreso).not.toBeNull();
+    expect(Number(x.reclamado)).toBe(111950);
+    expect(Number(x.noProcedente)).toBe(14150);
+    expect(Number(x.autorizado)).toBe(90000);
+    expect(x.pagado).toBe(90000);
+    expect(x.proximaAccion).toBeNull();
+    const tipos = x.eventos.map((e) => e.tipo);
+    expect(tipos.filter((t) => t === "pago")).toHaveLength(2);
+    expect(tipos.filter((t) => t === "documento")).toHaveLength(2);
+    const pagoFinal = x.eventos.find((e) => e.tipo === "pago" && e.estadoNuevo === "pagado");
+    expect(pagoFinal?.folio).toBe("TRF-FICT-2");
+    expect(x.eventos.find((e) => e.estadoNuevo === "autorizado")?.folio).toBe("DICT-FICT-1");
+    expect(x.eventos.every((e) => e.autor === "Usuario ej1")).toBe(true);
   });
 
-  it("filtra la bandeja por aseguradora, abiertos y búsqueda", async () => {
-    const ofi = callerDe(oficina);
-    const atlas = await ofi.siniestros.list({ aseguradoraId: 2 });
-    expect(atlas.length).toBeGreaterThan(0);
-    expect(atlas.every((r) => r.aseguradora === "Atlas")).toBe(true);
-    const abiertos = await ofi.siniestros.list({ soloAbiertos: true });
-    expect(abiertos.some((r) => r.estado === "cerrado")).toBe(false);
-    const porPlaca = await ofi.siniestros.list({ busqueda: "AAA000A" });
-    expect(porPlaca.length).toBeGreaterThan(0);
-    expect(porPlaca.every((r) => r.placas === "AAA000A")).toBe(true);
+  it("lo autorizado y el estatus no se cuelan por la edición de datos", async () => {
+    const c = callerDe(ej1);
+    const { id } = await c.siniestros.create(alta());
+    await c.siniestros.actualizar({ id, datos: { autorizado: "999", estado: "pagado" } as never });
+    const x = await c.siniestros.get({ id });
+    expect(x.autorizado).toBeNull();
+    expect(x.estado).toBe("reportado");
+    const r = await c.siniestros.actualizar({ id, datos: { ajustadorNombre: "Ajustador Ficticio", deducible: "9,225" } });
+    expect([...r.cambiados].sort()).toEqual(["ajustadorNombre", "deducible"]);
+    expect((await c.siniestros.get({ id })).deducible).toBe("9225.00");
+  });
+});
+
+describe("permisos", () => {
+  it("el ejecutivo solo modifica los suyos; consulta no modifica nada", async () => {
+    const deEj2 = await callerDe(admin).siniestros.create(alta({ ejecutivoId: ej2.id }));
+    await expect(callerDe(ej1).siniestros.cambiarEstado({ id: deEj2.id, destino: "recopilacion" })).rejects.toThrow(/responsable/);
+    await expect(callerDe(ej1).siniestros.actualizar({ id: deEj2.id, datos: { lugar: "x" } })).rejects.toThrow(/responsable/);
+    const doc = (await callerDe(ej1).siniestros.get({ id: deEj2.id })).documentos[0];
+    await expect(callerDe(ej1).expediente.documentoEstado({ id: doc.id, estado: "recibido" })).rejects.toThrow(/responsable/);
+    // Notas sí: cualquier ejecutivo
+    await callerDe(ej1).siniestros.agregarNota({ id: deEj2.id, nota: "Le avisé a la compañera" });
+    await callerDe(ej2).siniestros.cambiarEstado({ id: deEj2.id, destino: "recopilacion" });
+    await callerDe(admin).siniestros.cambiarEstado({ id: deEj2.id, destino: "cerrado", nota: "Duplicado (prueba)" });
+
+    await expect(callerDe(consulta).siniestros.create(alta())).rejects.toThrow(/permiso/);
+    await expect(callerDe(consulta).siniestros.agregarNota({ id: deEj2.id, nota: "x" })).rejects.toThrow(/permiso/);
+    expect((await callerDe(consulta).siniestros.list({})).length).toBeGreaterThan(0);
+    await expect(callerDe(consulta).usuarios.list()).rejects.toThrow(/permiso/);
+    await expect(callerDe(ej1).usuarios.list()).rejects.toThrow(/permiso/);
   });
 
-  it("registra y quita terceros dejando rastro", async () => {
-    const ofi = callerDe(oficina);
-    const { id } = await ofi.siniestros.create(alta(polizaV1));
-    const t = await ofi.siniestros.agregarTercero({ siniestroId: id, nombre: "Tercero Ficticio", placas: "ZZZ999Z" });
-    expect((await ofi.siniestros.get({ id })).terceros).toHaveLength(1);
-    await ofi.siniestros.quitarTercero({ id: t.id });
-    const det = await ofi.siniestros.get({ id });
-    expect(det.terceros).toHaveLength(0);
-    expect(det.eventos.filter((e) => e.tipo === "tercero")).toHaveLength(2);
+  it("solo el admin reasigna", async () => {
+    const { id } = await callerDe(ej1).siniestros.create(alta());
+    await expect(callerDe(ej1).siniestros.actualizar({ id, datos: { ejecutivoId: ej2.id } })).rejects.toThrow(/administrador/);
+    await callerDe(admin).siniestros.actualizar({ id, datos: { ejecutivoId: ej2.id } });
+    expect((await callerDe(ej1).siniestros.get({ id })).puedeEditar).toBe(false);
   });
 
-  it("sin sesión no hay acceso", async () => {
+  it("sin sesión no hay acceso; el usuario nuevo debe cambiar su contraseña", async () => {
     await expect(callerDe().siniestros.list({})).rejects.toThrow(/Inicia sesión/);
+    const nuevo = await callerDe(admin).usuarios.crear({ username: "nuevo.ej", nombre: "Nuevo", puesto: "Ejecutiva de autos", role: "ejecutivo" });
+    expect(nuevo.passwordTemporal).toMatch(/^.{4}-.{4}-.{4}$/);
+    const [u] = await getDb().select().from(s.users).where(eq(s.users.id, nuevo.id));
+    await expect(callerDe(u).siniestros.list({})).rejects.toThrow(/contraseña temporal/);
+  });
+});
+
+describe("bandeja, tablero y reportes", () => {
+  it("filtra por estatus, ramo, compañía, ejecutivo y búsqueda", async () => {
+    const c = callerDe(consulta);
+    const todos = await c.siniestros.list({ grupoEstado: "todos" });
+    const abiertos = await c.siniestros.list({ grupoEstado: "abiertos" });
+    expect(abiertos.some((r) => r.estado === "cerrado")).toBe(false);
+    expect(todos.length).toBeGreaterThan(abiertos.length);
+    expect((await c.siniestros.list({ grupoRamo: "gmm" })).every((r) => r.ramo === "gmmc")).toBe(true);
+    expect((await c.siniestros.list({ aseguradoraId: ase["Potosí"] })).every((r) => r.aseguradora === "Potosí")).toBe(true);
+    expect((await c.siniestros.list({ ejecutivoId: ej2.id })).every((r) => r.ejecutivoId === ej2.id)).toBe(true);
+    const porPoliza = await c.siniestros.list({ busqueda: "PRB-GMM" });
+    expect(porPoliza.length).toBeGreaterThan(0);
+    expect(porPoliza.every((r) => r.poliza === "PRB-GMM-1")).toBe(true);
   });
 
-  it("solo el admin administra usuarios; el nuevo usuario debe cambiar su contraseña", async () => {
-    await expect(callerDe(oficina).usuarios.list()).rejects.toThrow(/permiso/);
-    const nuevo = await callerDe(admin).usuarios.crear({ username: "nuevo.vendedor", nombre: "Nuevo", role: "vendedor" });
-    expect(nuevo.passwordTemporal).toMatch(/^.{4}-.{4}-.{4}$/);
-    const u = (await getDb().query.users.findFirst({ where: (t, { eq }) => eq(t.id, nuevo.id) }))!;
-    await expect(callerDe(u).siniestros.list({})).rejects.toThrow(/contraseña temporal/);
+  it("el tablero cuenta y avisa", async () => {
+    const t = await callerDe(consulta).tablero.resumen();
+    expect(t.kpis.registrados).toBe(t.kpis.abiertos + t.kpis.cerrados);
+    expect(t.kpis.pagado).toBe(90000);
+    expect(t.kpis.tiempoPromedio).not.toBeNull();
+    expect(t.alertas.length).toBeGreaterThan(0);
+    expect(t.porGrupo.find((g) => g.grupo === "autos")!.n).toBeGreaterThan(0);
+  });
+
+  it("vencido y sin movimiento aparecen como alertas", async () => {
+    const c = callerDe(ej1);
+    const { id } = await c.siniestros.create(alta());
+    await c.siniestros.accion({ id, proximaAccion: "Llamar al ajustador", fechaCompromiso: "2026-01-01" });
+    const t = await c.tablero.resumen();
+    expect(t.alertas.some((a) => a.siniestroId === id && a.titulo === "Compromiso vencido" && a.sev === "alta")).toBe(true);
+  });
+
+  it("reportes por ramo, compañía, ejecutivo y tiempos", async () => {
+    const c = callerDe(consulta);
+    const ramo = await c.tablero.reportes({ por: "ramo" });
+    expect(ramo.filas.find((f) => f.clave === "gmm")!.pagado).toBe(90000);
+    expect((await c.tablero.reportes({ por: "aseguradora" })).filas.length).toBeGreaterThan(1);
+    expect((await c.tablero.reportes({ por: "ejecutivo" })).filas.length).toBeGreaterThan(1);
+    expect((await c.tablero.reportes({ por: "tiempos" })).tiempos[0].nombre).toBe("Atlas");
+  });
+
+  it("contratantes con totales", async () => {
+    const lista = await callerDe(consulta).catalogos.contratantes({});
+    const c = lista.find((x) => x.id === contratante)!;
+    expect(c.siniestros).toBeGreaterThan(3);
+    expect(c.pagado).toBe(90000);
+    expect(c.ramos.sort()).toEqual(["flot", "gmmc"]);
   });
 });
 
@@ -144,7 +239,7 @@ describe("HTTP", () => {
     const res = await app.request("/api/trpc/auth.login", {
       method: "POST",
       headers: { "content-type": "application/json", host: "localhost:3000" },
-      body: JSON.stringify({ json: { username: "oficina", password: "Prueba12345" } }),
+      body: JSON.stringify({ json: { username: "ej1", password: "Prueba12345" } }),
     });
     expect(res.status).toBe(200);
     const cookie = res.headers.get("set-cookie")!.split(";")[0];
@@ -159,7 +254,7 @@ describe("HTTP", () => {
     const res = await app.request("/api/trpc/auth.login", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ json: { username: "oficina", password: "otra" } }),
+      body: JSON.stringify({ json: { username: "ej1", password: "otra" } }),
     });
     expect(res.status).toBe(401);
   });

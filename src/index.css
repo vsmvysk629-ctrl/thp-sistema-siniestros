@@ -3,5 +3,10 @@
 @tailwind utilities;
 
 body {
-  @apply bg-canvas text-ink-900 antialiased;
+  @apply bg-canvas font-sans text-ink-900 antialiased;
+}
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
 }

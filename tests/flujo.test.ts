@@ -1,81 +1,70 @@
 import { describe, expect, it } from "vitest";
-import {
-  ESTADOS,
-  ESTADOS_FINALES,
-  RUTA_PAGO_DANOS,
-  RUTA_PERDIDA_TOTAL,
-  RUTA_REPARACION,
-  TRANSICIONES,
-  rutaDe,
-  validarTransicion,
-  type DatosParaTransicion,
-} from "@contracts/flujo";
+import { ESTADOS, TRANSICIONES, estadoTrasPago, validarTransicion, type DatosParaTransicion } from "@contracts/flujo";
+import { RAMOS, TIPOS, documentosPara } from "@contracts/catalogos";
 
-const base: DatosParaTransicion = {
-  estado: "reportado",
-  numeroReporte: "R-1",
-  ajustadorNombre: "Ajustador Ficticio",
-  tallerNombre: "Taller Ficticio",
-};
+const base: DatosParaTransicion = { estado: "reportado", numeroSiniestro: null, documentosFaltantes: 0 };
 
-describe("flujo de autos", () => {
-  it("cada ruta se puede recorrer completa con folio cuando se pide", () => {
-    for (const ruta of [RUTA_REPARACION, RUTA_PAGO_DANOS, RUTA_PERDIDA_TOTAL]) {
-      for (let i = 0; i < ruta.length - 1; i++) {
-        const err = validarTransicion({ ...base, estado: ruta[i] }, ruta[i + 1], { folio: "F-1" });
-        expect(err, `${ruta[i]} → ${ruta[i + 1]}`).toBeNull();
-      }
+describe("flujo del trámite", () => {
+  it("la ruta normal se recorre hasta pagado y cerrado", () => {
+    const ruta = ["reportado", "recopilacion", "documentacion_completa", "ingresado", "en_revision", "autorizado"] as const;
+    for (let i = 0; i < ruta.length - 1; i++) {
+      const err = validarTransicion({ ...base, estado: ruta[i], numeroSiniestro: "SIN-1" }, ruta[i + 1], { folio: "F-1", montoAutorizado: "1000" });
+      expect(err, `${ruta[i]} → ${ruta[i + 1]}`).toBeNull();
     }
+    expect(validarTransicion({ ...base, estado: "pagado" }, "cerrado", {})).toBeNull();
   });
 
-  it("los estados finales no avanzan", () => {
-    for (const e of ESTADOS_FINALES) expect(TRANSICIONES[e]).toEqual([]);
+  it("pago parcial y pagado no se marcan a mano", () => {
+    for (const e of ESTADOS) {
+      expect(TRANSICIONES[e]).not.toContain("pago_parcial");
+      expect(TRANSICIONES[e]).not.toContain("pagado");
+    }
+    expect(validarTransicion({ ...base, estado: "autorizado" }, "pagado", {})).toMatch(/Financiero/);
   });
 
-  it("todo estado no final puede llegar a un estado final", () => {
+  it("cerrado es final y todo estado puede llegar a cerrado", () => {
+    expect(TRANSICIONES.cerrado).toEqual([]);
+    const siguientes = (e: (typeof ESTADOS)[number]) => [...TRANSICIONES[e], ...(e === "autorizado" || e === "pago_parcial" ? (["pago_parcial", "pagado"] as const) : [])];
     for (const inicio of ESTADOS) {
       const visto = new Set([inicio]);
       const cola = [inicio];
-      while (cola.length) for (const d of TRANSICIONES[cola.shift()!]) if (!visto.has(d)) (visto.add(d), cola.push(d));
-      expect(ESTADOS_FINALES.some((f) => visto.has(f)), inicio).toBe(true);
+      while (cola.length) for (const d of siguientes(cola.shift()!)) if (!visto.has(d)) (visto.add(d), cola.push(d));
+      expect(visto.has("cerrado"), inicio).toBe(true);
     }
   });
 
-  it("rechaza saltos que no existen", () => {
-    expect(validarTransicion(base, "entregado", {})).toMatch(/No se puede pasar/);
-    expect(validarTransicion({ ...base, estado: "cerrado" }, "reportado", {})).toMatch(/No se puede pasar/);
+  it("no se marca documentación completa con documentos faltantes", () => {
+    expect(validarTransicion({ ...base, estado: "recopilacion", documentosFaltantes: 2 }, "documentacion_completa", {})).toMatch(/Faltan 2/);
   });
 
-  it("exige folio de la aseguradora para autorizaciones y pagos", () => {
-    for (const [desde, hacia] of [
-      ["valuacion", "orden_admision"],
-      ["valuacion", "pago_danos"],
-      ["valuacion", "perdida_total"],
-      ["documentos_indemnizacion", "finiquito"],
-      ["finiquito", "pago_confirmado"],
-      ["pago_danos", "pago_confirmado"],
-    ] as const) {
-      expect(validarTransicion({ ...base, estado: desde }, hacia, {}), hacia).toMatch(/folio/);
-      expect(validarTransicion({ ...base, estado: desde }, hacia, { folio: "  " }), hacia).toMatch(/folio/);
-    }
+  it("ingresar exige el número o folio de la aseguradora", () => {
+    const s = { ...base, estado: "documentacion_completa" as const };
+    expect(validarTransicion(s, "ingresado", {})).toMatch(/número de siniestro/);
+    expect(validarTransicion(s, "ingresado", { folio: "GM-1" })).toBeNull();
+    expect(validarTransicion({ ...s, numeroSiniestro: "GM-1" }, "ingresado", {})).toBeNull();
   });
 
-  it("exige motivo para rechazar o cancelar", () => {
-    expect(validarTransicion(base, "rechazado", {})).toMatch(/motivo/);
-    expect(validarTransicion(base, "cancelado", { nota: "El cliente desistió" })).toBeNull();
+  it("autorizar exige folio del dictamen y monto", () => {
+    const s = { ...base, estado: "en_revision" as const };
+    expect(validarTransicion(s, "autorizado", { montoAutorizado: "100" })).toMatch(/folio/);
+    expect(validarTransicion(s, "autorizado", { folio: "DIC-1" })).toMatch(/monto/);
+    expect(validarTransicion(s, "autorizado", { folio: "DIC-1", montoAutorizado: "0" })).toMatch(/monto/);
   });
 
-  it("exige datos mínimos antes de avanzar", () => {
-    expect(validarTransicion({ ...base, numeroReporte: null }, "ajustador_asignado", {})).toMatch(/reporte/);
-    expect(validarTransicion({ ...base, ajustadorNombre: "" }, "ajustador_asignado", {})).toMatch(/ajustador/);
-    expect(validarTransicion({ ...base, estado: "valuacion", tallerNombre: null }, "orden_admision", { folio: "F" })).toMatch(/taller/);
-    // Cancelar sin número de reporte sí se permite
-    expect(validarTransicion({ ...base, numeroReporte: null }, "cancelado", { nota: "Duplicado" })).toBeNull();
+  it("pide motivo al rechazar, pedir información o cerrar antes de tiempo", () => {
+    expect(validarTransicion({ ...base, estado: "en_revision" }, "rechazado", {})).toMatch(/motivo/);
+    expect(validarTransicion({ ...base, estado: "en_revision" }, "info_adicional", {})).toMatch(/información/);
+    expect(validarTransicion(base, "cerrado", {})).toMatch(/motivo/);
+    expect(validarTransicion(base, "cerrado", { nota: "El cliente desistió" })).toBeNull();
   });
 
-  it("dibuja la ruta según el historial", () => {
-    expect(rutaDe("valuacion")).toBe(RUTA_REPARACION);
-    expect(rutaDe("pago_confirmado", ["pago_danos"])).toBe(RUTA_PAGO_DANOS);
-    expect(rutaDe("pago_confirmado", ["perdida_total"])).toBe(RUTA_PERDIDA_TOTAL);
+  it("el estatus tras un pago depende del saldo", () => {
+    expect(estadoTrasPago(1000, 400)).toBe("pago_parcial");
+    expect(estadoTrasPago(1000, 1000)).toBe("pagado");
+  });
+
+  it("cada ramo y tipo tiene documentación", () => {
+    for (const r of RAMOS) for (const t of TIPOS[r]) expect(documentosPara(r, t).length, `${r} ${t}`).toBeGreaterThan(3);
+    expect(documentosPara("autos", "Robo total")).toContain("Baja de placas");
   });
 });

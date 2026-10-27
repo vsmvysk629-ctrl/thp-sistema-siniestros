@@ -4,14 +4,26 @@ export default {
   theme: {
     extend: {
       colors: {
-        canvas: "#F5F8FB",
+        canvas: "#F3F5F8",
         surface: "#FFFFFF",
-        subtle: "#EAF2F9",
-        ink: { 900: "#22303C", 600: "#5A6B7A", 400: "#93A3B0" },
-        line: "#DCE8F3",
-        brand: { 700: "#16406B", 600: "#347DB2", 500: "#4A90C4", 100: "#EAF2F9" },
+        subtle: "#F6F8FA",
+        ink: { 900: "#16202E", 600: "#5B6676", 400: "#8A94A3" },
+        line: { DEFAULT: "#E1E6ED", strong: "#CBD3DD", soft: "#EEF1F5" },
+        navy: { 900: "#1F3B63", 800: "#2A4A75", 600: "#3B5F8F", 200: "#C9D4E3" },
+        tone: {
+          blueBg: "#E3ECF8", blue: "#1E4E8C",
+          orangeBg: "#FDEBD6", orange: "#8A3B07",
+          greenBg: "#DDF1E6", green: "#17603A",
+          grayBg: "#ECEEF1", gray: "#4A5361",
+          redBg: "#FBE1E1", red: "#9B1C1C",
+        },
+        sev: { alta: "#B42318", media: "#B45309", baja: "#2F6FB5" },
       },
-      fontFamily: { sans: ["Inter", "system-ui", "sans-serif"] },
+      borderRadius: { card: "14px" },
+      fontFamily: {
+        sans: ['"IBM Plex Sans"', "system-ui", "sans-serif"],
+        mono: ['"IBM Plex Mono"', "ui-monospace", "monospace"],
+      },
     },
   },
 }

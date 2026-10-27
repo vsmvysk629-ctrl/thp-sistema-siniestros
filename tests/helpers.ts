@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/mysql2/migrator";
 import path from "path";
 import * as s from "@db/schema";
@@ -11,7 +11,7 @@ import type { Rol } from "@contracts/constants";
 /** Borra todo y vuelve a crear las tablas. Solo corre contra una base de pruebas. */
 export async function baseLimpia() {
   const url = process.env.DATABASE_URL ?? "";
-  if (!/_test\b|_test$/.test(new URL(url).pathname)) {
+  if (!/_test$/.test(new URL(url).pathname)) {
     throw new Error("Las pruebas solo corren contra una base cuyo nombre termina en _test.");
   }
   const db = getDb();
@@ -27,7 +27,7 @@ export async function crearUsuario(username: string, role: Rol, password = "Prue
     .insert(s.users)
     .values({ username, nombre: `Usuario ${username}`, role, passwordHash: await hashPassword(password) })
     .$returningId();
-  return (await getDb().query.users.findFirst({ where: sql`${s.users.id} = ${id}` }))!;
+  return (await getDb().select().from(s.users).where(eq(s.users.id, id)))[0];
 }
 
 const factory = createCallerFactory(appRouter);

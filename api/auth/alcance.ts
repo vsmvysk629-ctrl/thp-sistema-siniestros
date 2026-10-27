@@ -1,35 +1,27 @@
 import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 import * as s from "@db/schema";
-import { getDb } from "../queries/connection";
+import { getDb, type Tx } from "../queries/connection";
 
 /**
- * Qué ve cada rol:
- * - admin y siniestros: todo.
- * - vendedor: solo clientes asignados a él (y sus pólizas y siniestros).
+ * Permisos por rol:
+ * - Ver siniestros, reportes y exportar: todos.
+ * - Crear siniestros: admin y ejecutivos.
+ * - Editar, cambiar estatus, documentos y pagos: admin, o el ejecutivo responsable del siniestro.
  */
-export const esVendedor = (u: s.User) => u.role === "vendedor";
+export const puedeEditar = (u: s.User, sin: Pick<s.Siniestro, "ejecutivoId">) =>
+  u.role === "admin" || (u.role === "ejecutivo" && sin.ejecutivoId === u.id);
 
-export async function assertCliente(u: s.User, clienteId: number) {
-  const c = await getDb().query.clientes.findFirst({ where: eq(s.clientes.id, clienteId) });
-  if (!c || (esVendedor(u) && c.vendedorId !== u.id)) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Cliente no encontrado." });
-  }
-  return c;
-}
-
-export async function assertPoliza(u: s.User, polizaId: number) {
-  const p = await getDb().query.polizas.findFirst({ where: eq(s.polizas.id, polizaId) });
-  if (!p) throw new TRPCError({ code: "NOT_FOUND", message: "Póliza no encontrada." });
-  await assertCliente(u, p.clienteId);
-  return p;
-}
-
-export async function assertSiniestro(u: s.User, siniestroId: number) {
-  const sin = await getDb().query.siniestros.findFirst({ where: eq(s.siniestros.id, siniestroId) });
+export async function assertSiniestro(siniestroId: number, tx: Tx = getDb()) {
+  const [sin] = await tx.select().from(s.siniestros).where(eq(s.siniestros.id, siniestroId)).limit(1);
   if (!sin) throw new TRPCError({ code: "NOT_FOUND", message: "Siniestro no encontrado." });
-  await assertCliente(u, sin.clienteId).catch(() => {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Siniestro no encontrado." });
-  });
+  return sin;
+}
+
+export async function assertEditable(u: s.User, siniestroId: number, tx: Tx = getDb()) {
+  const sin = await assertSiniestro(siniestroId, tx);
+  if (!puedeEditar(u, sin)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Solo el ejecutivo responsable o un administrador puede modificar este siniestro." });
+  }
   return sin;
 }

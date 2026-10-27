@@ -37,8 +37,8 @@ export function roleQuery(...roles: Rol[]) {
   );
 }
 
-/** Cualquier usuario con sesión (vendedores ven solo lo suyo; ver api/auth/alcance.ts). */
-export const authedQuery = roleQuery("siniestros", "vendedor");
-/** Oficina de siniestros y administradores. */
-export const oficinaQuery = roleQuery("siniestros");
+/** Ver, reportes y exportar: todos los roles. */
+export const authedQuery = roleQuery("ejecutivo", "consulta");
+/** Crear y editar (el ejecutivo, solo lo suyo: ver api/auth/alcance.ts). */
+export const editorQuery = roleQuery("ejecutivo");
 export const adminQuery = roleQuery();

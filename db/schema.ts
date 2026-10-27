@@ -2,7 +2,6 @@ import {
   bigint,
   boolean,
   date,
-  datetime,
   decimal,
   index,
   int,
@@ -13,11 +12,14 @@ import {
   varchar,
 } from "drizzle-orm/mysql-core";
 import { ROLES } from "../contracts/constants";
-import { ESTADOS, RESPONSABILIDADES, TIPOS } from "../contracts/flujo";
+import { DICTAMENES, DOC_ESTADOS, RAMOS, RESPONSABILIDADES } from "../contracts/catalogos";
+import { ESTADOS } from "../contracts/flujo";
 
 const id = () => bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey();
 const ref = (name: string) => bigint(name, { mode: "number", unsigned: true });
 const refReq = (name: string) => ref(name).notNull();
+const dinero = (name: string) => decimal(name, { precision: 14, scale: 2 });
+const fecha = (name: string) => date(name, { mode: "string" });
 const creado = () => timestamp("createdAt").defaultNow().notNull();
 const actualizado = () =>
   timestamp("updatedAt")
@@ -32,12 +34,14 @@ export const users = mysqlTable("users", {
   id: id(),
   username: varchar("username", { length: 64 }).notNull().unique(),
   nombre: varchar("nombre", { length: 128 }).notNull(),
+  puesto: varchar("puesto", { length: 128 }),
   passwordHash: varchar("passwordHash", { length: 255 }),
-  role: mysqlEnum("role", ROLES).default("vendedor").notNull(),
+  role: mysqlEnum("role", ROLES).default("ejecutivo").notNull(),
   activo: boolean("activo").default(true).notNull(),
   debeCambiarPassword: boolean("debeCambiarPassword").default(false).notNull(),
   intentosFallidos: int("intentosFallidos").default(0).notNull(),
   bloqueadoHasta: timestamp("bloqueadoHasta"),
+  ultimoAcceso: timestamp("ultimoAcceso"),
   createdAt: creado(),
   updatedAt: actualizado(),
 });
@@ -54,41 +58,41 @@ export const aseguradoras = mysqlTable("aseguradoras", {
 });
 export type Aseguradora = typeof aseguradoras.$inferSelect;
 
-export const clientes = mysqlTable(
-  "clientes",
+export const contratantes = mysqlTable(
+  "contratantes",
   {
     id: id(),
     nombre: varchar("nombre", { length: 255 }).notNull(),
+    tipoPersona: mysqlEnum("tipoPersona", ["fisica", "moral"]).default("fisica").notNull(),
+    rfc: varchar("rfc", { length: 16 }),
+    contacto: varchar("contacto", { length: 255 }),
     telefono: varchar("telefono", { length: 32 }),
     email: varchar("email", { length: 255 }),
-    vendedorId: ref("vendedorId"),
+    ejecutivoId: ref("ejecutivoId"),
+    clienteDesde: int("clienteDesde"),
     createdAt: creado(),
     updatedAt: actualizado(),
   },
-  (t) => [index("cli_vend_idx").on(t.vendedorId)],
+  (t) => [index("con_nombre_idx").on(t.nombre)],
 );
-export type Cliente = typeof clientes.$inferSelect;
+export type Contratante = typeof contratantes.$inferSelect;
 
-/** Póliza de autos: el vehículo asegurado vive en la póliza. */
 export const polizas = mysqlTable(
   "polizas",
   {
     id: id(),
     numero: varchar("numero", { length: 64 }).notNull(),
     aseguradoraId: refReq("aseguradoraId"),
-    clienteId: refReq("clienteId"),
-    vigenciaInicio: date("vigenciaInicio", { mode: "string" }),
-    vigenciaFin: date("vigenciaFin", { mode: "string" }),
-    cobertura: mysqlEnum("cobertura", ["amplia", "limitada", "rc"]).default("amplia").notNull(),
-    vehiculoMarca: varchar("vehiculoMarca", { length: 64 }),
-    vehiculoModelo: varchar("vehiculoModelo", { length: 64 }),
-    vehiculoAnio: int("vehiculoAnio"),
-    vehiculoPlacas: varchar("vehiculoPlacas", { length: 16 }),
-    vehiculoSerie: varchar("vehiculoSerie", { length: 32 }),
+    contratanteId: refReq("contratanteId"),
+    ramo: mysqlEnum("ramo", RAMOS).notNull(),
+    /** Detalle libre, p. ej. "22 unidades" o "48 asegurados". */
+    descripcion: varchar("descripcion", { length: 255 }),
+    vigenciaInicio: fecha("vigenciaInicio"),
+    vigenciaFin: fecha("vigenciaFin"),
     createdAt: creado(),
     updatedAt: actualizado(),
   },
-  (t) => [index("pol_cli_idx").on(t.clienteId), index("pol_num_idx").on(t.aseguradoraId, t.numero)],
+  (t) => [index("pol_con_idx").on(t.contratanteId), index("pol_num_idx").on(t.numero)],
 );
 export type Poliza = typeof polizas.$inferSelect;
 
@@ -99,50 +103,112 @@ export const siniestros = mysqlTable(
   "siniestros",
   {
     id: id(),
-    /** Folio interno de THP, p. ej. SIN-2026-0001. */
+    /** Folio interno THP, p. ej. THP-S-26-0001. */
     folio: varchar("folio", { length: 32 }).notNull().unique(),
-    polizaId: refReq("polizaId"),
-    clienteId: refReq("clienteId"),
+    contratanteId: refReq("contratanteId"),
+    polizaId: ref("polizaId"),
+    /** Número de póliza cuando aún no está dada de alta en el catálogo. */
+    polizaTexto: varchar("polizaTexto", { length: 64 }),
     aseguradoraId: refReq("aseguradoraId"),
-    // Lo que da la aseguradora
-    numeroReporte: varchar("numeroReporte", { length: 64 }),
+    ramo: mysqlEnum("ramo", RAMOS).notNull(),
+    tipo: varchar("tipo", { length: 64 }).notNull(),
+    /** Asegurado o afectado: persona, unidad o bien. */
+    afectado: varchar("afectado", { length: 255 }).notNull(),
+    descripcion: text("descripcion"),
     numeroSiniestro: varchar("numeroSiniestro", { length: 64 }),
+    fechaOcurrido: fecha("fechaOcurrido").notNull(),
+    fechaReporte: fecha("fechaReporte").notNull(),
+    fechaIngreso: fecha("fechaIngreso"),
+    estado: mysqlEnum("estado", ESTADOS).default("reportado").notNull(),
+    ejecutivoId: refReq("ejecutivoId"),
+    proximaAccion: varchar("proximaAccion", { length: 500 }),
+    fechaCompromiso: fecha("fechaCompromiso"),
+    // Financiero. "autorizado" solo cambia con la autorización de la aseguradora; lo pagado sale de siniestro_pagos.
+    gastado: dinero("gastado"),
+    reclamado: dinero("reclamado"),
+    noProcedente: dinero("noProcedente"),
+    deducible: dinero("deducible"),
+    coaseguro: dinero("coaseguro"),
+    autorizado: dinero("autorizado"),
+    // Autos
+    numeroReporte: varchar("numeroReporte", { length: 64 }),
     ajustadorNombre: varchar("ajustadorNombre", { length: 128 }),
     ajustadorTelefono: varchar("ajustadorTelefono", { length: 32 }),
-    // El hecho
-    tipo: mysqlEnum("tipo", TIPOS).notNull(),
-    fechaOcurrido: datetime("fechaOcurrido", { mode: "string" }).notNull(),
+    tallerNombre: varchar("tallerNombre", { length: 128 }),
     lugar: varchar("lugar", { length: 255 }),
-    descripcion: text("descripcion"),
     conductorNombre: varchar("conductorNombre", { length: 128 }),
     responsabilidad: mysqlEnum("responsabilidad", RESPONSABILIDADES).default("por_definir").notNull(),
-    // Reparación y montos (montoAutorizado solo cambia con folio de la aseguradora)
-    tallerNombre: varchar("tallerNombre", { length: 128 }),
-    deducible: decimal("deducible", { precision: 12, scale: 2 }),
-    montoEstimado: decimal("montoEstimado", { precision: 12, scale: 2 }),
-    montoAutorizado: decimal("montoAutorizado", { precision: 12, scale: 2 }),
-    estado: mysqlEnum("estado", ESTADOS).default("reportado").notNull(),
-    responsableId: ref("responsableId"),
-    creadoPorId: ref("creadoPorId"),
     ultimoMovimiento: timestamp("ultimoMovimiento").defaultNow().notNull(),
+    creadoPorId: ref("creadoPorId"),
     createdAt: creado(),
     updatedAt: actualizado(),
   },
   (t) => [
+    index("sin_con_idx").on(t.contratanteId),
     index("sin_pol_idx").on(t.polizaId),
-    index("sin_cli_idx").on(t.clienteId),
-    index("sin_aseg_estado_idx").on(t.aseguradoraId, t.estado),
+    index("sin_estado_idx").on(t.estado),
+    index("sin_ejec_idx").on(t.ejecutivoId),
   ],
 );
 export type Siniestro = typeof siniestros.$inferSelect;
 
-/** Historial: cada alta, cambio de estado, edición y nota. Nunca se borra ni se edita. */
-export const siniestroEventos = mysqlTable(
+export const documentos = mysqlTable(
+  "siniestro_documentos",
+  {
+    id: id(),
+    siniestroId: refReq("siniestroId"),
+    nombre: varchar("nombre", { length: 255 }).notNull(),
+    estado: mysqlEnum("estado", DOC_ESTADOS).default("pendiente").notNull(),
+    orden: int("orden").default(0).notNull(),
+    nota: varchar("nota", { length: 500 }),
+    actualizadoPorId: ref("actualizadoPorId"),
+    updatedAt: actualizado(),
+  },
+  (t) => [index("doc_sin_idx").on(t.siniestroId)],
+);
+export type Documento = typeof documentos.$inferSelect;
+
+/** Facturas y conceptos reclamados, con el dictamen de la aseguradora. */
+export const conceptos = mysqlTable(
+  "siniestro_conceptos",
+  {
+    id: id(),
+    siniestroId: refReq("siniestroId"),
+    concepto: varchar("concepto", { length: 255 }).notNull(),
+    importe: dinero("importe").notNull(),
+    noProcedente: dinero("noProcedente").default("0").notNull(),
+    dictamen: mysqlEnum("dictamen", DICTAMENES).default("pendiente").notNull(),
+    createdAt: creado(),
+  },
+  (t) => [index("con_sin_idx").on(t.siniestroId)],
+);
+export type Concepto = typeof conceptos.$inferSelect;
+
+/** Pagos de la aseguradora. Cada uno exige la referencia (transferencia, cheque, etc.). */
+export const pagos = mysqlTable(
+  "siniestro_pagos",
+  {
+    id: id(),
+    siniestroId: refReq("siniestroId"),
+    concepto: varchar("concepto", { length: 255 }).notNull(),
+    fecha: fecha("fecha").notNull(),
+    monto: dinero("monto").notNull(),
+    forma: mysqlEnum("forma", ["transferencia", "cheque", "pago_directo", "otro"]).default("transferencia").notNull(),
+    referencia: varchar("referencia", { length: 128 }).notNull(),
+    registradoPorId: ref("registradoPorId"),
+    createdAt: creado(),
+  },
+  (t) => [index("pag_sin_idx").on(t.siniestroId)],
+);
+export type Pago = typeof pagos.$inferSelect;
+
+/** Bitácora: cada alta, estatus, documento, pago, edición y nota. Nunca se edita ni se borra. */
+export const eventos = mysqlTable(
   "siniestro_eventos",
   {
     id: id(),
     siniestroId: refReq("siniestroId"),
-    tipo: mysqlEnum("tipo", ["alta", "cambio_estado", "edicion", "nota", "tercero"]).notNull(),
+    tipo: mysqlEnum("tipo", ["alta", "estatus", "nota", "documento", "pago", "financiero", "edicion", "accion", "tercero"]).notNull(),
     estadoAnterior: mysqlEnum("estadoAnterior", ESTADOS),
     estadoNuevo: mysqlEnum("estadoNuevo", ESTADOS),
     /** Folio o referencia de la aseguradora que respalda el cambio. */
@@ -153,7 +219,7 @@ export const siniestroEventos = mysqlTable(
   },
   (t) => [index("evt_sin_idx").on(t.siniestroId)],
 );
-export type SiniestroEvento = typeof siniestroEventos.$inferSelect;
+export type Evento = typeof eventos.$inferSelect;
 
 export const terceros = mysqlTable(
   "terceros",

@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "cac18e75-f00a-4b7d-9e03-e57f30357222",
+  "id": "5ae91e83-b18b-442f-8ce1-ec002de7c69c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "aseguradoras": {
@@ -57,8 +57,85 @@
       },
       "checkConstraint": {}
     },
-    "clientes": {
-      "name": "clientes",
+    "siniestro_conceptos": {
+      "name": "siniestro_conceptos",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "siniestroId": {
+          "name": "siniestroId",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "concepto": {
+          "name": "concepto",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "importe": {
+          "name": "importe",
+          "type": "decimal(14,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "noProcedente": {
+          "name": "noProcedente",
+          "type": "decimal(14,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'0'"
+        },
+        "dictamen": {
+          "name": "dictamen",
+          "type": "enum('pendiente','procedente','parcial','no_procedente','por_corregir')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pendiente'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "con_sin_idx": {
+          "name": "con_sin_idx",
+          "columns": [
+            "siniestroId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "siniestro_conceptos_id": {
+          "name": "siniestro_conceptos_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "contratantes": {
+      "name": "contratantes",
       "columns": {
         "id": {
           "name": "id",
@@ -72,6 +149,28 @@
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false
+        },
+        "tipoPersona": {
+          "name": "tipoPersona",
+          "type": "enum('fisica','moral')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'fisica'"
+        },
+        "rfc": {
+          "name": "rfc",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "contacto": {
+          "name": "contacto",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         },
         "telefono": {
@@ -88,9 +187,16 @@
           "notNull": false,
           "autoincrement": false
         },
-        "vendedorId": {
-          "name": "vendedorId",
+        "ejecutivoId": {
+          "name": "ejecutivoId",
           "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "clienteDesde": {
+          "name": "clienteDesde",
+          "type": "int",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -113,18 +219,18 @@
         }
       },
       "indexes": {
-        "cli_vend_idx": {
-          "name": "cli_vend_idx",
+        "con_nombre_idx": {
+          "name": "con_nombre_idx",
           "columns": [
-            "vendedorId"
+            "nombre"
           ],
           "isUnique": false
         }
       },
       "foreignKeys": {},
       "compositePrimaryKeys": {
-        "clientes_id": {
-          "name": "clientes_id",
+        "contratantes_id": {
+          "name": "contratantes_id",
           "columns": [
             "id"
           ]
@@ -133,8 +239,8 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
-    "polizas": {
-      "name": "polizas",
+    "siniestro_documentos": {
+      "name": "siniestro_documentos",
       "columns": {
         "id": {
           "name": "id",
@@ -143,91 +249,49 @@
           "notNull": true,
           "autoincrement": true
         },
-        "numero": {
-          "name": "numero",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "aseguradoraId": {
-          "name": "aseguradoraId",
+        "siniestroId": {
+          "name": "siniestroId",
           "type": "bigint unsigned",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "clienteId": {
-          "name": "clienteId",
-          "type": "bigint unsigned",
+        "nombre": {
+          "name": "nombre",
+          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "vigenciaInicio": {
-          "name": "vigenciaInicio",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "vigenciaFin": {
-          "name": "vigenciaFin",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "cobertura": {
-          "name": "cobertura",
-          "type": "enum('amplia','limitada','rc')",
+        "estado": {
+          "name": "estado",
+          "type": "enum('pendiente','recibido','en_revision','validado','correccion')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'amplia'"
+          "default": "'pendiente'"
         },
-        "vehiculoMarca": {
-          "name": "vehiculoMarca",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "vehiculoModelo": {
-          "name": "vehiculoModelo",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "vehiculoAnio": {
-          "name": "vehiculoAnio",
+        "orden": {
+          "name": "orden",
           "type": "int",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "vehiculoPlacas": {
-          "name": "vehiculoPlacas",
-          "type": "varchar(16)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "vehiculoSerie": {
-          "name": "vehiculoSerie",
-          "type": "varchar(32)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp",
-          "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "(now())"
+          "default": 0
+        },
+        "nota": {
+          "name": "nota",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "actualizadoPorId": {
+          "name": "actualizadoPorId",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         },
         "updatedAt": {
           "name": "updatedAt",
@@ -239,26 +303,18 @@
         }
       },
       "indexes": {
-        "pol_cli_idx": {
-          "name": "pol_cli_idx",
+        "doc_sin_idx": {
+          "name": "doc_sin_idx",
           "columns": [
-            "clienteId"
-          ],
-          "isUnique": false
-        },
-        "pol_num_idx": {
-          "name": "pol_num_idx",
-          "columns": [
-            "aseguradoraId",
-            "numero"
+            "siniestroId"
           ],
           "isUnique": false
         }
       },
       "foreignKeys": {},
       "compositePrimaryKeys": {
-        "polizas_id": {
-          "name": "polizas_id",
+        "siniestro_documentos_id": {
+          "name": "siniestro_documentos_id",
           "columns": [
             "id"
           ]
@@ -286,21 +342,21 @@
         },
         "tipo": {
           "name": "tipo",
-          "type": "enum('alta','cambio_estado','edicion','nota','tercero')",
+          "type": "enum('alta','estatus','nota','documento','pago','financiero','edicion','accion','tercero')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
         "estadoAnterior": {
           "name": "estadoAnterior",
-          "type": "enum('reportado','ajustador_asignado','valuacion','orden_admision','en_reparacion','listo_entrega','entregado','pago_danos','perdida_total','documentos_indemnizacion','finiquito','pago_confirmado','cerrado','rechazado','cancelado')",
+          "type": "enum('reportado','recopilacion','documentacion_completa','ingresado','en_revision','info_adicional','autorizado','pago_parcial','pagado','rechazado','cerrado')",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
         "estadoNuevo": {
           "name": "estadoNuevo",
-          "type": "enum('reportado','ajustador_asignado','valuacion','orden_admision','en_reparacion','listo_entrega','entregado','pago_danos','perdida_total','documentos_indemnizacion','finiquito','pago_confirmado','cerrado','rechazado','cancelado')",
+          "type": "enum('reportado','recopilacion','documentacion_completa','ingresado','en_revision','info_adicional','autorizado','pago_parcial','pagado','rechazado','cerrado')",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -356,8 +412,8 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
-    "siniestros": {
-      "name": "siniestros",
+    "siniestro_pagos": {
+      "name": "siniestro_pagos",
       "columns": {
         "id": {
           "name": "id",
@@ -366,23 +422,99 @@
           "notNull": true,
           "autoincrement": true
         },
-        "folio": {
-          "name": "folio",
-          "type": "varchar(32)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "polizaId": {
-          "name": "polizaId",
+        "siniestroId": {
+          "name": "siniestroId",
           "type": "bigint unsigned",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "clienteId": {
-          "name": "clienteId",
+        "concepto": {
+          "name": "concepto",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "fecha": {
+          "name": "fecha",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "monto": {
+          "name": "monto",
+          "type": "decimal(14,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "forma": {
+          "name": "forma",
+          "type": "enum('transferencia','cheque','pago_directo','otro')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'transferencia'"
+        },
+        "referencia": {
+          "name": "referencia",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "registradoPorId": {
+          "name": "registradoPorId",
           "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "pag_sin_idx": {
+          "name": "pag_sin_idx",
+          "columns": [
+            "siniestroId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "siniestro_pagos_id": {
+          "name": "siniestro_pagos_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "polizas": {
+      "name": "polizas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "numero": {
+          "name": "numero",
+          "type": "varchar(64)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -394,134 +526,40 @@
           "notNull": true,
           "autoincrement": false
         },
-        "numeroReporte": {
-          "name": "numeroReporte",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "numeroSiniestro": {
-          "name": "numeroSiniestro",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "ajustadorNombre": {
-          "name": "ajustadorNombre",
-          "type": "varchar(128)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "ajustadorTelefono": {
-          "name": "ajustadorTelefono",
-          "type": "varchar(32)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "tipo": {
-          "name": "tipo",
-          "type": "enum('colision','robo_total','robo_parcial','cristales','rc_terceros','otro')",
+        "contratanteId": {
+          "name": "contratanteId",
+          "type": "bigint unsigned",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "fechaOcurrido": {
-          "name": "fechaOcurrido",
-          "type": "datetime",
+        "ramo": {
+          "name": "ramo",
+          "type": "enum('autos','flot','gmmi','gmmc','ap','vida','danos','casa','rc','trans')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "lugar": {
-          "name": "lugar",
+        "descripcion": {
+          "name": "descripcion",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "descripcion": {
-          "name": "descripcion",
-          "type": "text",
+        "vigenciaInicio": {
+          "name": "vigenciaInicio",
+          "type": "date",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "conductorNombre": {
-          "name": "conductorNombre",
-          "type": "varchar(128)",
+        "vigenciaFin": {
+          "name": "vigenciaFin",
+          "type": "date",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
-        },
-        "responsabilidad": {
-          "name": "responsabilidad",
-          "type": "enum('por_definir','asegurado','tercero','compartida')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'por_definir'"
-        },
-        "tallerNombre": {
-          "name": "tallerNombre",
-          "type": "varchar(128)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "deducible": {
-          "name": "deducible",
-          "type": "decimal(12,2)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "montoEstimado": {
-          "name": "montoEstimado",
-          "type": "decimal(12,2)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "montoAutorizado": {
-          "name": "montoAutorizado",
-          "type": "decimal(12,2)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "estado": {
-          "name": "estado",
-          "type": "enum('reportado','ajustador_asignado','valuacion','orden_admision','en_reparacion','listo_entrega','entregado','pago_danos','perdida_total','documentos_indemnizacion','finiquito','pago_confirmado','cerrado','rechazado','cancelado')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'reportado'"
-        },
-        "responsableId": {
-          "name": "responsableId",
-          "type": "bigint unsigned",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "creadoPorId": {
-          "name": "creadoPorId",
-          "type": "bigint unsigned",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "ultimoMovimiento": {
-          "name": "ultimoMovimiento",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
         },
         "createdAt": {
           "name": "createdAt",
@@ -541,6 +579,295 @@
         }
       },
       "indexes": {
+        "pol_con_idx": {
+          "name": "pol_con_idx",
+          "columns": [
+            "contratanteId"
+          ],
+          "isUnique": false
+        },
+        "pol_num_idx": {
+          "name": "pol_num_idx",
+          "columns": [
+            "numero"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "polizas_id": {
+          "name": "polizas_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "siniestros": {
+      "name": "siniestros",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "folio": {
+          "name": "folio",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "contratanteId": {
+          "name": "contratanteId",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "polizaId": {
+          "name": "polizaId",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "polizaTexto": {
+          "name": "polizaTexto",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "aseguradoraId": {
+          "name": "aseguradoraId",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "ramo": {
+          "name": "ramo",
+          "type": "enum('autos','flot','gmmi','gmmc','ap','vida','danos','casa','rc','trans')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "afectado": {
+          "name": "afectado",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "descripcion": {
+          "name": "descripcion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "numeroSiniestro": {
+          "name": "numeroSiniestro",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "fechaOcurrido": {
+          "name": "fechaOcurrido",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "fechaReporte": {
+          "name": "fechaReporte",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "fechaIngreso": {
+          "name": "fechaIngreso",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "estado": {
+          "name": "estado",
+          "type": "enum('reportado','recopilacion','documentacion_completa','ingresado','en_revision','info_adicional','autorizado','pago_parcial','pagado','rechazado','cerrado')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'reportado'"
+        },
+        "ejecutivoId": {
+          "name": "ejecutivoId",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "proximaAccion": {
+          "name": "proximaAccion",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "fechaCompromiso": {
+          "name": "fechaCompromiso",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "gastado": {
+          "name": "gastado",
+          "type": "decimal(14,2)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "reclamado": {
+          "name": "reclamado",
+          "type": "decimal(14,2)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "noProcedente": {
+          "name": "noProcedente",
+          "type": "decimal(14,2)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "deducible": {
+          "name": "deducible",
+          "type": "decimal(14,2)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "coaseguro": {
+          "name": "coaseguro",
+          "type": "decimal(14,2)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "autorizado": {
+          "name": "autorizado",
+          "type": "decimal(14,2)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "numeroReporte": {
+          "name": "numeroReporte",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ajustadorNombre": {
+          "name": "ajustadorNombre",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ajustadorTelefono": {
+          "name": "ajustadorTelefono",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "tallerNombre": {
+          "name": "tallerNombre",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "lugar": {
+          "name": "lugar",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "conductorNombre": {
+          "name": "conductorNombre",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "responsabilidad": {
+          "name": "responsabilidad",
+          "type": "enum('por_definir','asegurado','tercero','compartida')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'por_definir'"
+        },
+        "ultimoMovimiento": {
+          "name": "ultimoMovimiento",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "creadoPorId": {
+          "name": "creadoPorId",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "sin_con_idx": {
+          "name": "sin_con_idx",
+          "columns": [
+            "contratanteId"
+          ],
+          "isUnique": false
+        },
         "sin_pol_idx": {
           "name": "sin_pol_idx",
           "columns": [
@@ -548,18 +875,17 @@
           ],
           "isUnique": false
         },
-        "sin_cli_idx": {
-          "name": "sin_cli_idx",
+        "sin_estado_idx": {
+          "name": "sin_estado_idx",
           "columns": [
-            "clienteId"
+            "estado"
           ],
           "isUnique": false
         },
-        "sin_aseg_estado_idx": {
-          "name": "sin_aseg_estado_idx",
+        "sin_ejec_idx": {
+          "name": "sin_ejec_idx",
           "columns": [
-            "aseguradoraId",
-            "estado"
+            "ejecutivoId"
           ],
           "isUnique": false
         }
@@ -696,6 +1022,13 @@
           "notNull": true,
           "autoincrement": false
         },
+        "puesto": {
+          "name": "puesto",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "passwordHash": {
           "name": "passwordHash",
           "type": "varchar(255)",
@@ -705,11 +1038,11 @@
         },
         "role": {
           "name": "role",
-          "type": "enum('admin','siniestros','vendedor')",
+          "type": "enum('admin','ejecutivo','consulta')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'vendedor'"
+          "default": "'ejecutivo'"
         },
         "activo": {
           "name": "activo",
@@ -737,6 +1070,13 @@
         },
         "bloqueadoHasta": {
           "name": "bloqueadoHasta",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ultimoAcceso": {
+          "name": "ultimoAcceso",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false,

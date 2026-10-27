@@ -11,7 +11,7 @@ export async function authenticateRequest(headers: Headers) {
   if (!token) return undefined;
   const claim = await verifySessionToken(token);
   if (!claim) return undefined;
-  const user = await getDb().query.users.findFirst({ where: eq(s.users.id, claim.uid) });
+  const [user] = await getDb().select().from(s.users).where(eq(s.users.id, claim.uid));
   if (!user || !user.activo || !user.passwordHash) return undefined;
   if (huellaPassword(user.passwordHash) !== claim.pv) return undefined;
   return user;
