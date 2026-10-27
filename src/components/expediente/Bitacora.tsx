@@ -42,7 +42,7 @@ export function BitacoraTab({ s }: { s: Exp }) {
               <span className="absolute -left-[27px] top-1.5 h-3 w-3 rounded-full border-2 border-white bg-navy-900" />
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <Badge tono={tono}>{label}</Badge>
-                <span className="font-semibold">{e.autor ?? "Sistema"}</span>
+                <span className="font-medium">{e.autor ?? "Sistema"}</span>
                 <span className="text-ink-600">{fmtFecha(e.createdAt, true)}</span>
               </div>
               {e.estadoNuevo && e.tipo !== "alta" && (

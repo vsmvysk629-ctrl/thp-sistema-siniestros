@@ -4,25 +4,31 @@ export default {
   theme: {
     extend: {
       colors: {
-        canvas: "#F3F5F8",
+        canvas: "#F7F8FA",
         surface: "#FFFFFF",
-        subtle: "#F6F8FA",
-        ink: { 900: "#16202E", 600: "#5B6676", 400: "#8A94A3" },
-        line: { DEFAULT: "#E1E6ED", strong: "#CBD3DD", soft: "#EEF1F5" },
-        navy: { 900: "#1F3B63", 800: "#2A4A75", 600: "#3B5F8F", 200: "#C9D4E3" },
+        subtle: "#F3F4F6",
+        ink: { 900: "#0B0F17", 600: "#5B6270", 400: "#9AA1AD" },
+        line: { DEFAULT: "#E8EAEE", strong: "#D5D9DF", soft: "#F0F1F4" },
+        // Primario: tinta casi negra. Acento: azul del logo THP.
+        navy: { 900: "#0B0F17", 800: "#1F2530", 600: "#2B74AE", 200: "#C9D4E3" },
+        thp: { DEFAULT: "#2B74AE", dark: "#1F5F93", soft: "#EEF4FA", gris: "#9A9A9A" },
         tone: {
-          blueBg: "#E3ECF8", blue: "#1E4E8C",
-          orangeBg: "#FDEBD6", orange: "#8A3B07",
-          greenBg: "#DDF1E6", green: "#17603A",
-          grayBg: "#ECEEF1", gray: "#4A5361",
-          redBg: "#FBE1E1", red: "#9B1C1C",
+          blueBg: "#EEF4FA", blue: "#1F5F93",
+          orangeBg: "#FBF2E8", orange: "#8A4B12",
+          greenBg: "#EAF5EF", green: "#1F6B45",
+          grayBg: "#F1F2F4", gray: "#4B5361",
+          redBg: "#FBEDED", red: "#A12828",
         },
-        sev: { alta: "#B42318", media: "#B45309", baja: "#2F6FB5" },
+        sev: { alta: "#D14343", media: "#D98A2B", baja: "#2B74AE" },
       },
       borderRadius: { card: "14px" },
       fontFamily: {
-        sans: ['"IBM Plex Sans"', "system-ui", "sans-serif"],
+        sans: ['"Inter"', "system-ui", "sans-serif"],
+        display: ['"Montserrat"', '"Inter"', "system-ui", "sans-serif"],
         mono: ['"IBM Plex Mono"', "ui-monospace", "monospace"],
+      },
+      boxShadow: {
+        flota: "0 1px 2px rgba(11,15,23,0.04), 0 8px 24px -12px rgba(11,15,23,0.10)",
       },
     },
   },

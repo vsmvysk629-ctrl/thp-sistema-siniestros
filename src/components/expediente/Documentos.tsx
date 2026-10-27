@@ -3,7 +3,7 @@ import clsx from "clsx"
 import { DOC_ESTADOS, DOC_FALTANTE, DOC_LABEL, type DocEstado } from "@contracts/catalogos"
 import type { Tono } from "@contracts/flujo"
 import { trpc } from "@/providers/trpc"
-import { Badge, Button, Card, ErrorBox, Input } from "@/components/ui"
+import { Badge, Barra, Button, Card, ErrorBox, Input } from "@/components/ui"
 import { TONO_CLASE, errorMsg } from "@/lib/format"
 import type { Exp } from "@/pages/Expediente"
 import { useRefrescar } from "./Modales"
@@ -21,11 +21,11 @@ export function DocumentosTab({ s }: { s: Exp }) {
   const pct = total ? Math.round((listos / total) * 100) : 0
   return (
     <Card title="Checklist de documentación" actions={<span className="text-sm text-ink-600">{listos} de {total} validados · {faltan} faltante{faltan === 1 ? "" : "s"}</span>}>
-      <div className="mb-4 h-2 rounded-full bg-line-soft"><div className="h-2 rounded-full bg-tone-green" style={{ width: `${pct}%` }} /></div>
+      <div className="mb-4"><Barra pct={pct} className="bg-thp" /></div>
       <ul className="divide-y divide-line-soft border-t border-line-soft">
         {s.documentos.map((d) => (
           <li key={d.id} className="flex flex-wrap items-center gap-3 py-3">
-            <span className={clsx("h-2 w-2 rounded-full", DOC_FALTANTE.includes(d.estado) ? "bg-sev-media" : "bg-tone-green")} />
+            <span className={clsx("h-1.5 w-1.5 rounded-full", DOC_FALTANTE.includes(d.estado) ? "bg-sev-media" : "bg-[#2F9E68]")} />
             <div className="min-w-0 flex-1">
               <p className="text-[15px]">{d.nombre}</p>
               {d.nota && <p className="text-xs text-ink-600">{d.nota}</p>}

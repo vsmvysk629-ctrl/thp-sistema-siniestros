@@ -20,10 +20,10 @@ export function FinancieroTab({ s }: { s: Exp }) {
   const autorizado = s.autorizado === null ? null : n(s.autorizado)
   const saldo = autorizado === null ? null : autorizado - s.pagado
   const barras = [
-    { label: "Gastado por el asegurado", v: n(s.gastado), color: "bg-[#8A9AB0]" },
+    { label: "Gastado por el asegurado", v: n(s.gastado), color: "bg-ink-400" },
     { label: "Reclamado", v: n(s.reclamado), color: "bg-navy-900" },
-    { label: "Autorizado", v: autorizado ?? 0, color: "bg-[#2F6FB5]" },
-    { label: "Pagado", v: s.pagado, color: "bg-tone-green" },
+    { label: "Autorizado", v: autorizado ?? 0, color: "bg-thp" },
+    { label: "Pagado", v: s.pagado, color: "bg-[#2F9E68]" },
   ]
   const max = Math.max(1, ...barras.map((b) => b.v))
   const puedePagar = s.puedeEditar && ESTADOS_PAGO.includes(s.estado)
@@ -46,8 +46,8 @@ export function FinancieroTab({ s }: { s: Exp }) {
           {barras.map((b) => (
             <div key={b.label} className="grid grid-cols-[150px_1fr_100px] items-center gap-3 text-sm sm:grid-cols-[190px_1fr_110px]">
               <span>{b.label}</span>
-              <div className="h-3 rounded-full bg-line-soft"><div className={`h-3 rounded-full ${b.color}`} style={{ width: `${(b.v / max) * 100}%` }} /></div>
-              <span className="text-right font-semibold">{moneda(b.v)}</span>
+              <div className="h-1.5 rounded-full bg-line-soft"><div className={`h-1.5 rounded-full ${b.color}`} style={{ width: `${(b.v / max) * 100}%` }} /></div>
+              <span className="text-right font-medium tabular-nums">{moneda(b.v)}</span>
             </div>
           ))}
         </div>
@@ -58,10 +58,10 @@ export function FinancieroTab({ s }: { s: Exp }) {
           <Tabla cols={["Concepto", <span key="i" className="block text-right">Importe</span>, <span key="n" className="block text-right">No procedente</span>, "Dictamen", ""]} vacio={!s.conceptos.length && "Sin conceptos. El reclamado se captura en Editar datos o se suma de aquí."}>
             {s.conceptos.map((c) => (
               <tr key={c.id}>
-                <td className="px-2.5 py-3">{c.concepto}</td>
-                <td className="px-2.5 py-3 text-right">{moneda(c.importe)}</td>
-                <td className="px-2.5 py-3 text-right">{moneda(c.noProcedente)}</td>
-                <td className="px-2.5 py-3"><Badge tono={DICT_TONO[c.dictamen]}>{DICTAMEN_LABEL[c.dictamen]}</Badge></td>
+                <td className="px-3 py-3.5">{c.concepto}</td>
+                <td className="px-3 py-3.5 text-right">{moneda(c.importe)}</td>
+                <td className="px-3 py-3.5 text-right">{moneda(c.noProcedente)}</td>
+                <td className="px-3 py-3.5"><Badge tono={DICT_TONO[c.dictamen]}>{DICTAMEN_LABEL[c.dictamen]}</Badge></td>
                 <td className="no-print whitespace-nowrap px-2.5 py-3 text-right text-xs">
                   {s.puedeEditar && (
                     <>
@@ -84,15 +84,15 @@ export function FinancieroTab({ s }: { s: Exp }) {
             {s.pagos.map((p, i) => (
               <li key={p.id} className="flex justify-between gap-3 py-3 text-sm">
                 <div>
-                  <p className="font-semibold">Pago {i + 1} · {p.concepto}</p>
+                  <p className="font-medium">Pago {i + 1} · {p.concepto}</p>
                   <p className="text-ink-600">{fmtFecha(p.fecha)} · {FORMA_LABEL[p.forma]} · Ref. {p.referencia}</p>
                 </div>
-                <span className="font-semibold">{moneda(p.monto)}</span>
+                <span className="font-medium">{moneda(p.monto)}</span>
               </li>
             ))}
           </ul>
           {saldo !== null && (
-            <div className="mt-2 flex justify-between border-t border-line-soft pt-3 text-sm font-semibold text-tone-orange">
+            <div className="mt-2 flex justify-between border-t border-line-soft pt-3 text-sm font-medium text-tone-orange">
               <span>Saldo pendiente</span><span>{moneda(saldo)}</span>
             </div>
           )}

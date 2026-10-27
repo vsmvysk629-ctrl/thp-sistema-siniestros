@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { trpc } from "@/providers/trpc"
-import { Button, Card, PageHeader, Tabla, Tabs } from "@/components/ui"
+import { Barra, Button, Card, PageHeader, Tabla, Tabs } from "@/components/ui"
 import { descargarCSV, hoyISO, moneda } from "@/lib/format"
 
 type Por = "ramo" | "aseguradora" | "ejecutivo" | "tiempos"
@@ -34,7 +34,7 @@ export default function Reportes() {
         }
       />
       <Tabs<Por> valor={por} onChange={setPor} tabs={(Object.keys(TITULO) as Por[]).map((id) => ({ id, label: TITULO[id] }))} />
-      <h2 className="mb-3 hidden text-lg font-semibold print:block">{TITULO[por]}</h2>
+      <h2 className="mb-3 hidden text-lg font-medium print:block">{TITULO[por]}</h2>
       {por !== "tiempos" ? (
         <Card pad={false} className="px-3 py-2">
           <Tabla
@@ -43,14 +43,14 @@ export default function Reportes() {
           >
             {filas.map((f) => (
               <tr key={String(f.clave)}>
-                <td className="px-2.5 py-3 font-semibold">{f.nombre}</td>
-                <td className="px-2.5 py-3">{f.n}</td>
-                <td className="px-2.5 py-3">{f.abiertos}</td>
-                <td className="px-2.5 py-3">{moneda(f.reclamado)}</td>
-                <td className="px-2.5 py-3">{moneda(f.pagado)}</td>
-                <td className="px-2.5 py-3">
+                <td className="px-3 py-3.5 font-medium">{f.nombre}</td>
+                <td className="px-3 py-3.5">{f.n}</td>
+                <td className="px-3 py-3.5">{f.abiertos}</td>
+                <td className="px-3 py-3.5">{moneda(f.reclamado)}</td>
+                <td className="px-3 py-3.5">{moneda(f.pagado)}</td>
+                <td className="px-3 py-3.5">
                   <div className="flex items-center gap-2">
-                    <div className="h-2 w-28 rounded-full bg-line-soft"><div className="h-2 rounded-full bg-tone-green" style={{ width: `${Math.min(100, f.pct)}%` }} /></div>
+                    <div className="w-28"><Barra pct={f.pct} className="bg-thp" /></div>
                     <span>{f.pct}%</span>
                   </div>
                 </td>
@@ -64,8 +64,8 @@ export default function Reportes() {
           <div className="space-y-3">
             {tiempos.map((t) => (
               <div key={t.nombre} className="grid grid-cols-[120px_1fr_120px] items-center gap-3 text-sm">
-                <span className="font-semibold">{t.nombre}</span>
-                <div className="h-3 rounded-full bg-line-soft"><div className="h-3 rounded-full bg-navy-900" style={{ width: `${((t.dias ?? 0) / maxDias) * 100}%` }} /></div>
+                <span className="font-medium">{t.nombre}</span>
+                <Barra pct={((t.dias ?? 0) / maxDias) * 100} />
                 <span className="text-right">{t.dias} días · {t.n} pagado{t.n === 1 ? "" : "s"}</span>
               </div>
             ))}

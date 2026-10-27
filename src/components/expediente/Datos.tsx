@@ -63,7 +63,7 @@ export function DatosTab({ s }: { s: Exp }) {
               {s.terceros.map((t) => (
                 <li key={t.id} className="flex items-start justify-between gap-3 py-3 text-sm">
                   <div>
-                    <p className="font-semibold">{t.nombre}</p>
+                    <p className="font-medium">{t.nombre}</p>
                     <p className="text-ink-600">{[t.vehiculo, t.placas, t.aseguradora, t.telefono].filter(Boolean).join(" · ") || "—"}</p>
                     {t.notas && <p className="text-ink-600">{t.notas}</p>}
                   </div>
@@ -75,11 +75,11 @@ export function DatosTab({ s }: { s: Exp }) {
         )}
       </div>
       <Card className="h-fit print:hidden">
-        <p className="text-[13px] font-semibold uppercase tracking-wide text-ink-600">Contratante</p>
-        <p className="mt-2 text-lg font-semibold">{s.contratante.nombre}</p>
+        <p className="text-[11px] font-medium uppercase tracking-[0.09em] text-ink-400">Contratante</p>
+        <p className="mt-2 text-lg font-medium">{s.contratante.nombre}</p>
         <p className="text-sm text-ink-600">{[s.contratante.telefono, s.contratante.email].filter(Boolean).join(" · ")}</p>
-        <Link to={`/contratantes/${s.contratante.id}`} className="mt-3 inline-block rounded-[10px] border border-line-strong px-3.5 py-2 text-sm font-semibold hover:bg-subtle">Ver perfil completo</Link>
-        <p className="mt-5 border-t border-line-soft pt-4 text-[13px] font-semibold uppercase tracking-wide text-ink-600">Otros siniestros del contratante</p>
+        <Link to={`/contratantes/${s.contratante.id}`} className="mt-3 inline-block rounded-[10px] border border-line-strong px-3.5 py-2 text-sm font-medium hover:bg-subtle">Ver perfil completo</Link>
+        <p className="mt-5 border-t border-line-soft pt-4 text-[11px] font-medium uppercase tracking-[0.09em] text-ink-400">Otros siniestros del contratante</p>
         {s.otros.length === 0 && <p className="mt-2 text-sm text-ink-400">Ninguno.</p>}
         <ul className="mt-2 space-y-3">
           {s.otros.map((o) => (

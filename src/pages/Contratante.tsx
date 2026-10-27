@@ -24,7 +24,7 @@ export default function Contratante() {
   const editor = esEditor(usuario)
   return (
     <>
-      <Link to="/contratantes" className="mb-4 flex items-center gap-1 text-sm font-semibold text-navy-900"><ArrowLeft size={15} /> Contratantes</Link>
+      <Link to="/contratantes" className="mb-4 flex items-center gap-1 text-sm font-medium text-navy-900"><ArrowLeft size={15} /> Contratantes</Link>
       <PageHeader
         titulo={c.data.nombre}
         sub={[c.data.tipoPersona === "moral" ? "Persona moral" : "Persona física", c.data.rfc, c.data.contacto, c.data.telefono, c.data.email].filter(Boolean).join(" · ")}
@@ -48,11 +48,11 @@ export default function Contratante() {
         <Tabla cols={["Póliza", "Ramo", "Compañía", "Descripción", "Vigencia"]} vacio={!c.data.polizas.length && "Sin pólizas capturadas."}>
           {c.data.polizas.map((p) => (
             <tr key={p.id}>
-              <td className="px-2.5 py-3 font-mono text-[13px]">{p.numero}</td>
-              <td className="px-2.5 py-3">{RAMO_LABEL[p.ramo]}</td>
-              <td className="px-2.5 py-3">{p.aseguradora}</td>
-              <td className="px-2.5 py-3 text-ink-600">{p.descripcion ?? "—"}</td>
-              <td className="px-2.5 py-3">{p.vigenciaInicio ? `${fmtFecha(p.vigenciaInicio)} – ${fmtFecha(p.vigenciaFin)}` : "—"}</td>
+              <td className="px-3 py-3.5 font-mono text-[13px]">{p.numero}</td>
+              <td className="px-3 py-3.5">{RAMO_LABEL[p.ramo]}</td>
+              <td className="px-3 py-3.5">{p.aseguradora}</td>
+              <td className="px-3 py-3.5 text-ink-600">{p.descripcion ?? "—"}</td>
+              <td className="px-3 py-3.5">{p.vigenciaInicio ? `${fmtFecha(p.vigenciaInicio)} – ${fmtFecha(p.vigenciaFin)}` : "—"}</td>
             </tr>
           ))}
         </Tabla>
@@ -66,7 +66,7 @@ export default function Contratante() {
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <Folio>{r.folio}</Folio>
-                  <p className="font-semibold">{r.tipo} · {r.afectado}</p>
+                  <p className="font-medium">{r.tipo} · {r.afectado}</p>
                 </div>
                 <EstadoBadge estado={r.estado} />
               </div>

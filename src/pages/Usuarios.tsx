@@ -34,14 +34,14 @@ export default function Usuarios() {
         <Tabla cols={["Usuario", "Puesto", "Rol", "Siniestros abiertos a cargo", "Último acceso", ""]}>
           {lista.data?.map((u) => (
             <tr key={u.id} className={u.activo ? "" : "opacity-60"}>
-              <td className="px-2.5 py-3">
+              <td className="px-3 py-3.5">
                 <span className="flex items-center gap-2.5">
                   <Avatar nombre={u.nombre} id={u.id} oscuro={u.role === "admin"} />
-                  <span><span className="font-semibold">{u.nombre}</span><span className="block text-xs text-ink-600">@{u.username}</span></span>
+                  <span><span className="font-medium">{u.nombre}</span><span className="block text-xs text-ink-600">@{u.username}</span></span>
                 </span>
               </td>
-              <td className="px-2.5 py-3">{u.puesto ?? "—"}</td>
-              <td className="px-2.5 py-3">
+              <td className="px-3 py-3.5">{u.puesto ?? "—"}</td>
+              <td className="px-3 py-3.5">
                 <select
                   value={u.role}
                   disabled={u.id === usuario.id || editar.isPending}
@@ -51,9 +51,9 @@ export default function Usuarios() {
                   {ROLES.map((r) => <option key={r} value={r}>{ROL_LABEL[r]}</option>)}
                 </select>
               </td>
-              <td className="px-2.5 py-3">{u.role === "admin" ? "Supervisa todos" : u.role === "consulta" ? "—" : u.abiertos}</td>
-              <td className="px-2.5 py-3 text-ink-600">{u.ultimoAcceso ? fmtFecha(u.ultimoAcceso, true) : "Nunca"}</td>
-              <td className="px-2.5 py-3 text-right">
+              <td className="px-3 py-3.5">{u.role === "admin" ? "Supervisa todos" : u.role === "consulta" ? "—" : u.abiertos}</td>
+              <td className="px-3 py-3.5 text-ink-600">{u.ultimoAcceso ? fmtFecha(u.ultimoAcceso, true) : "Nunca"}</td>
+              <td className="px-3 py-3.5 text-right">
                 {u.id !== usuario.id && (
                   <button className="text-xs text-navy-900 hover:underline" onClick={() => editar.mutate({ id: u.id, activo: !u.activo })}>
                     {u.activo ? "Desactivar" : "Activar"}
@@ -71,8 +71,8 @@ export default function Usuarios() {
         <Tabla cols={["Permiso", "Administrador", "Ejecutivo", "Solo consulta"]}>
           {PERMISOS.map(([p, ...vs]) => (
             <tr key={p}>
-              <td className="px-2.5 py-3">{p}</td>
-              {vs.map((v, i) => <td key={i} className="px-2.5 py-3"><Badge tono={tonoPermiso(v)}>{v}</Badge></td>)}
+              <td className="px-3 py-3.5">{p}</td>
+              {vs.map((v, i) => <td key={i} className="px-3 py-3.5"><Badge tono={tonoPermiso(v)}>{v}</Badge></td>)}
             </tr>
           ))}
         </Tabla>

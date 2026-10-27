@@ -3,10 +3,26 @@
 @tailwind utilities;
 
 body {
-  @apply bg-canvas font-sans text-ink-900 antialiased;
+  @apply bg-canvas font-sans text-[14px] text-ink-900 antialiased;
+  font-feature-settings: "cv11", "ss01", "tnum";
+}
+
+h1, h2, h3 {
+  @apply font-display tracking-tight;
+}
+
+::selection {
+  background: #d6e6f4;
+}
+
+/* Barra de desplazamiento discreta */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d5d9df transparent;
 }
 
 @media print {
   .no-print { display: none !important; }
   body { background: white; }
+  @page { margin: 14mm; }
 }

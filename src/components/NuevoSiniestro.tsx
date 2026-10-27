@@ -110,7 +110,7 @@ export default function NuevoSiniestro({ contratanteId, onClose }: { contratante
           </Field>
         </div>
         <div className="rounded-[10px] bg-subtle p-4">
-          <p className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-ink-600">Documentación que se pedirá ({docs.length})</p>
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.09em] text-ink-400">Documentación que se pedirá ({docs.length})</p>
           <ul className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
             {docs.map((d) => <li key={d}>· {d}</li>)}
           </ul>

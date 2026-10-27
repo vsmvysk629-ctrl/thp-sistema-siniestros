@@ -89,14 +89,14 @@ export default function Siniestros() {
         >
           {filas.map((r) => (
             <tr key={r.id} className="cursor-pointer align-top hover:bg-subtle" onClick={() => nav(`/siniestros/${r.id}`)}>
-              <td className="px-2.5 py-3"><Folio>{r.folio}</Folio><p className="text-ink-600">Ocurrió {fmtFecha(r.fechaOcurrido)}</p></td>
-              <td className="max-w-[240px] px-2.5 py-3"><p className="font-semibold">{r.contratante}</p><p className="text-ink-600">{r.afectado}</p></td>
-              <td className="px-2.5 py-3"><p>{RAMO_LABEL[r.ramo]}</p><p className="text-ink-600">{r.tipo}</p></td>
-              <td className="px-2.5 py-3"><p>{r.aseguradora}</p><p className="text-ink-600">{r.numeroSiniestro ?? "Sin número aún"}</p></td>
-              <td className="px-2.5 py-3"><EstadoBadge estado={r.estado} /></td>
-              <td className="max-w-[240px] px-2.5 py-3">{r.proximaAccion ? <><p>{r.proximaAccion}</p><Compromiso fecha={r.fechaCompromiso} hoy={hoy} /></> : <span className="text-ink-400">—</span>}</td>
-              <td className="px-2.5 py-3"><span className="flex items-center gap-2 whitespace-nowrap"><Avatar nombre={r.ejecutivo} id={r.ejecutivoId} />{corto(r.ejecutivo)}</span></td>
-              <td className="px-2.5 py-3 text-right font-semibold">{moneda(r.reclamado)}</td>
+              <td className="px-3 py-3.5"><Folio>{r.folio}</Folio><p className="text-ink-600">Ocurrió {fmtFecha(r.fechaOcurrido)}</p></td>
+              <td className="max-w-[240px] px-3 py-3.5"><p className="font-medium">{r.contratante}</p><p className="text-ink-600">{r.afectado}</p></td>
+              <td className="px-3 py-3.5"><p>{RAMO_LABEL[r.ramo]}</p><p className="text-ink-600">{r.tipo}</p></td>
+              <td className="px-3 py-3.5"><p>{r.aseguradora}</p><p className="text-ink-600">{r.numeroSiniestro ?? "Sin número aún"}</p></td>
+              <td className="px-3 py-3.5"><EstadoBadge estado={r.estado} /></td>
+              <td className="max-w-[240px] px-3 py-3.5">{r.proximaAccion ? <><p>{r.proximaAccion}</p><Compromiso fecha={r.fechaCompromiso} hoy={hoy} /></> : <span className="text-ink-400">—</span>}</td>
+              <td className="px-3 py-3.5"><span className="flex items-center gap-2 whitespace-nowrap"><Avatar nombre={r.ejecutivo} id={r.ejecutivoId} />{corto(r.ejecutivo)}</span></td>
+              <td className="px-3 py-3.5 text-right font-medium">{moneda(r.reclamado)}</td>
             </tr>
           ))}
         </Tabla>
@@ -107,7 +107,7 @@ export default function Siniestros() {
 
 export function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} className={clsx("rounded-full border px-3.5 py-1.5 text-sm", on ? "border-navy-900 bg-navy-900 text-white" : "border-line-strong bg-surface hover:bg-subtle")}>
+    <button onClick={onClick} className={clsx("rounded-full border px-3 py-1 text-[12.5px] transition-colors", on ? "border-ink-900 bg-ink-900 text-white" : "border-line bg-surface text-ink-600 hover:border-line-strong hover:text-ink-900")}>
       {children}
     </button>
   )

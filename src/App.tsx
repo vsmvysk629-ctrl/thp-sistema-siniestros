@@ -1,6 +1,6 @@
-import { useState, type FormEvent, type ReactNode } from "react"
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react"
 import { Navigate, NavLink, Route, Routes, useNavigate } from "react-router"
-import { Bell, ChartColumn, FileText, LayoutGrid, Lock, LogOut, Plus, Search, Users } from "lucide-react"
+import { Bell, ChartNoAxesColumn, FileText, LayoutGrid, LogOut, Plus, Search, ShieldCheck, Users } from "lucide-react"
 import clsx from "clsx"
 import { ROL_LABEL } from "@contracts/constants"
 import { trpc } from "@/providers/trpc"
@@ -16,20 +16,23 @@ import Contratante from "@/pages/Contratante"
 import Reportes from "@/pages/Reportes"
 import Usuarios from "@/pages/Usuarios"
 
+const ICONO = { size: 17, strokeWidth: 1.6 }
+
 export default function App() {
   const me = trpc.auth.me.useQuery(undefined, { retry: false })
   const [nuevo, setNuevo] = useState<{ contratanteId?: number } | null>(null)
-  if (me.isLoading) return <p className="p-8 text-sm text-ink-400">Cargando…</p>
+  if (me.isLoading) return <Cargando />
   if (!me.data) return <Login />
   if (me.data.debeCambiarPassword) return <CambiarPassword />
   const u = me.data
   return (
     <SesionContext.Provider value={{ usuario: u, nuevoSiniestro: (contratanteId) => setNuevo({ contratanteId }) }}>
-      <div className="min-h-screen lg:flex lg:bg-[linear-gradient(to_right,#1F3B63_220px,transparent_220px)] print:bg-none">
+      <div className="min-h-screen lg:flex">
         <Sidebar />
         <div className="min-w-0 flex-1">
           <Topbar />
-          <main className="mx-auto max-w-[1240px] px-4 py-6 lg:px-8">
+          <main className="mx-auto max-w-[1200px] px-4 pb-16 pt-8 lg:px-10">
+            <EncabezadoImpresion />
             <Routes>
               <Route path="/" element={<Tablero />} />
               <Route path="/siniestros" element={<Siniestros />} />
@@ -48,40 +51,66 @@ export default function App() {
   )
 }
 
-function Sidebar() {
-  const me = trpc.auth.me.useQuery()
-  const u = me.data!
-  const t = trpc.tablero.resumen.useQuery()
+function Cargando() {
   return (
-    <aside className="no-print flex flex-col bg-navy-900 text-navy-200 lg:sticky lg:top-0 lg:h-screen lg:w-[220px] lg:shrink-0">
-      <div className="flex items-center gap-2.5 px-5 py-5">
-        <span className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-white text-sm font-bold text-navy-900">THP</span>
-        <div>
-          <p className="font-semibold text-white">THP Siniestros</p>
-          <p className="text-xs">Sistema integral</p>
-        </div>
-      </div>
-      {esEditor(u) && <BotonNuevo />}
-      <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col">
-        <Item to="/" icon={<LayoutGrid size={18} />} n={t.data?.alertas.length}>Tablero</Item>
-        <Item to="/siniestros" icon={<FileText size={18} />} n={t.data?.kpis.abiertos}>Siniestros</Item>
-        <Item to="/contratantes" icon={<Users size={18} />}>Contratantes</Item>
-        <Item to="/reportes" icon={<ChartColumn size={18} />}>Reportes</Item>
-        {u.role === "admin" && <Item to="/usuarios" icon={<Lock size={18} />}>Usuarios y permisos</Item>}
-      </nav>
-      <div className="mt-auto hidden border-t border-navy-800 px-5 py-4 text-xs lg:block">Datos de prueba ficticios mientras no se cargue la cartera real.</div>
-    </aside>
+    <div className="flex min-h-screen items-center justify-center">
+      <img src="/logo-thp-simbolo.png" alt="" className="h-10 animate-pulse opacity-70" />
+    </div>
   )
 }
 
-function BotonNuevo() {
-  const { nuevoSiniestro } = useSesion()
+/** Solo aparece al imprimir o exportar a PDF. */
+function EncabezadoImpresion() {
   return (
-    <div className="px-3 pb-4">
-      <button onClick={() => nuevoSiniestro()} className="flex w-full items-center justify-center gap-2 rounded-[10px] bg-white py-2.5 text-sm font-semibold text-navy-900 hover:bg-tone-blueBg">
-        <Plus size={16} /> Nuevo siniestro
-      </button>
+    <div className="mb-6 hidden items-center justify-between border-b border-line pb-4 print:flex">
+      <img src="/logo-thp.png" alt="THP Seguros" className="h-10" />
+      <p className="text-[11px] text-ink-400">Sistema de siniestros · impreso el {new Date().toLocaleString("es-MX", { dateStyle: "long", timeStyle: "short" })}</p>
     </div>
+  )
+}
+
+function Sidebar() {
+  const { usuario: u, nuevoSiniestro } = useSesion()
+  const t = trpc.tablero.resumen.useQuery()
+  const utils = trpc.useUtils()
+  const logout = trpc.auth.logout.useMutation({ onSuccess: () => utils.invalidate() })
+  return (
+    <aside className="no-print flex flex-col border-b border-line bg-surface lg:sticky lg:top-0 lg:h-screen lg:w-[232px] lg:shrink-0 lg:border-b-0 lg:border-r">
+      <div className="flex items-center gap-2 px-5 pb-6 pt-6">
+        <img src="/logo-thp.png" alt="THP Seguros" className="h-11 w-auto" />
+      </div>
+      {esEditor(u) && (
+        <div className="px-3 pb-5">
+          <button onClick={() => nuevoSiniestro()} className="flex h-9 w-full items-center justify-center gap-1.5 rounded-[10px] bg-ink-900 text-[13px] font-medium text-white transition-colors hover:bg-navy-800">
+            <Plus size={15} strokeWidth={2} /> Nuevo siniestro
+          </button>
+        </div>
+      )}
+      <p className="hidden px-5 pb-2 text-[11px] font-medium uppercase tracking-[0.09em] text-ink-400 lg:block">Siniestros</p>
+      <nav className="flex gap-0.5 overflow-x-auto px-3 pb-3 lg:flex-col">
+        <Item to="/" icon={<LayoutGrid {...ICONO} />} n={t.data?.alertas.length}>Tablero</Item>
+        <Item to="/siniestros" icon={<FileText {...ICONO} />} n={t.data?.kpis.abiertos}>Siniestros</Item>
+        <Item to="/contratantes" icon={<Users {...ICONO} />}>Contratantes</Item>
+        <Item to="/reportes" icon={<ChartNoAxesColumn {...ICONO} />}>Reportes</Item>
+        {u.role === "admin" && (
+          <>
+            <p className="hidden px-2 pb-2 pt-5 text-[11px] font-medium uppercase tracking-[0.09em] text-ink-400 lg:block">Administración</p>
+            <Item to="/usuarios" icon={<ShieldCheck {...ICONO} />}>Usuarios y permisos</Item>
+          </>
+        )}
+      </nav>
+      <div className="mt-auto hidden border-t border-line px-4 py-4 lg:block">
+        <div className="flex items-center gap-2.5">
+          <Avatar nombre={u.nombre} grande oscuro />
+          <div className="min-w-0 flex-1 leading-tight">
+            <p className="truncate text-[13px] font-medium">{u.nombre}</p>
+            <p className="text-[12px] text-ink-400">{ROL_LABEL[u.role]}</p>
+          </div>
+          <button onClick={() => logout.mutate()} className="rounded-md p-1.5 text-ink-400 hover:bg-subtle hover:text-ink-900" title="Salir" aria-label="Salir"><LogOut size={16} strokeWidth={1.6} /></button>
+        </div>
+        <p className="mt-4 font-display text-[11px] font-light italic text-ink-400">“Asesorar para decidir”</p>
+      </div>
+    </aside>
   )
 }
 
@@ -91,12 +120,15 @@ function Item({ to, icon, n, children }: { to: string; icon: ReactNode; n?: numb
       to={to}
       end={to === "/"}
       className={({ isActive }) =>
-        clsx("flex items-center gap-3 whitespace-nowrap rounded-[10px] px-3 py-2.5 text-[15px]", isActive ? "bg-navy-800 font-semibold text-white" : "hover:bg-navy-800")
+        clsx(
+          "relative flex items-center gap-2.5 whitespace-nowrap rounded-[9px] px-2.5 py-2 text-[13.5px] transition-colors",
+          isActive ? "bg-subtle font-medium text-ink-900 before:absolute before:-left-3 before:top-2 before:h-5 before:w-[2px] before:rounded-full before:bg-thp" : "text-ink-600 hover:bg-subtle/70 hover:text-ink-900",
+        )
       }
     >
       {icon}
       <span className="flex-1">{children}</span>
-      {!!n && <span className="rounded-full bg-navy-600 px-2 text-[11px] font-semibold text-white">{n}</span>}
+      {!!n && <span className="font-mono text-[11px] text-ink-400">{n}</span>}
     </NavLink>
   )
 }
@@ -104,49 +136,70 @@ function Item({ to, icon, n, children }: { to: string; icon: ReactNode; n?: numb
 function Topbar() {
   const nav = useNavigate()
   const [q, setQ] = useState("")
-  const me = trpc.auth.me.useQuery()
+  const ref = useRef<HTMLInputElement>(null)
   const t = trpc.tablero.resumen.useQuery()
-  const utils = trpc.useUtils()
-  const logout = trpc.auth.logout.useMutation({ onSuccess: () => utils.invalidate() })
-  const u = me.data!
+  // Atajo: "/" enfoca la búsqueda.
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName
+      if (e.key === "/" && !["INPUT", "TEXTAREA", "SELECT"].includes(tag)) {
+        e.preventDefault()
+        ref.current?.focus()
+      }
+    }
+    window.addEventListener("keydown", k)
+    return () => window.removeEventListener("keydown", k)
+  }, [])
   const buscar = (e: FormEvent) => {
     e.preventDefault()
-    nav(`/siniestros?q=${encodeURIComponent(q.trim())}`)
+    nav(`/siniestros?q=${encodeURIComponent(q.trim())}&estado=todos`)
+    ref.current?.blur()
   }
+  const alertas = t.data?.alertas.length ?? 0
   return (
-    <header className="no-print flex items-center gap-3 border-b border-line bg-surface px-4 py-3 lg:px-8">
-      <form onSubmit={buscar} className="relative max-w-[520px] flex-1">
-        <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar folio, contratante o asegurado…" className="w-full rounded-[10px] border border-line-strong py-2.5 pl-10 pr-3 text-sm outline-none focus:border-navy-900" />
+    <header className="no-print sticky top-0 z-30 flex items-center gap-3 border-b border-line bg-canvas/80 px-4 py-3 backdrop-blur-md lg:px-10">
+      <form onSubmit={buscar} className="relative max-w-[460px] flex-1">
+        <Search size={15} strokeWidth={1.75} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
+        <input
+          ref={ref}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Buscar folio, contratante, asegurado o póliza"
+          className="h-9 w-full rounded-[10px] border border-line bg-surface pl-9 pr-10 text-[13px] outline-none transition placeholder:text-ink-400 focus:border-thp focus:ring-4 focus:ring-thp/10"
+        />
+        <kbd className="absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded border border-line px-1.5 font-mono text-[10px] text-ink-400 sm:block">/</kbd>
       </form>
-      <div className="ml-auto flex items-center gap-3">
-        <button onClick={() => nav("/")} className="relative rounded-[10px] border border-line p-2.5 text-ink-900 hover:bg-subtle" aria-label="Alertas">
-          <Bell size={18} />
-          {!!t.data?.alertas.length && <span className="absolute -right-1.5 -top-1.5 rounded-full bg-sev-alta px-1.5 text-[10px] font-semibold text-white">{t.data.alertas.length}</span>}
-        </button>
-        <Avatar nombre={u.nombre} grande oscuro />
-        <div className="hidden text-sm leading-tight sm:block">
-          <p className="font-semibold">{u.nombre}</p>
-          <p className="text-ink-600">{ROL_LABEL[u.role]}</p>
-        </div>
-        <button onClick={() => logout.mutate()} className="rounded-[10px] p-2 text-ink-600 hover:bg-subtle" title="Salir" aria-label="Salir"><LogOut size={18} /></button>
-      </div>
+      <button onClick={() => nav("/")} className="relative ml-auto flex h-9 items-center gap-2 rounded-[10px] border border-line bg-surface px-3 text-[13px] text-ink-600 hover:text-ink-900" aria-label="Alertas">
+        <Bell size={15} strokeWidth={1.75} />
+        <span className="hidden sm:inline">Alertas</span>
+        {alertas > 0 && <span className="rounded-full bg-sev-alta px-1.5 font-mono text-[10px] font-medium text-white">{alertas}</span>}
+      </button>
     </header>
   )
 }
 
-function Pantalla({ titulo, children }: { titulo: string; children: ReactNode }) {
+function Pantalla({ titulo, sub, children }: { titulo: string; sub: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-sm rounded-card border border-line bg-surface p-6">
-        <div className="mb-5 flex items-center gap-2.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-navy-900 text-sm font-bold text-white">THP</span>
-          <div>
-            <p className="font-semibold">THP Siniestros</p>
-            <p className="text-xs text-ink-600">{titulo}</p>
-          </div>
+    <div className="grid min-h-screen bg-surface lg:grid-cols-[1fr_1.1fr]">
+      <div className="flex flex-col px-6 py-8 sm:px-12">
+        <img src="/logo-thp.png" alt="THP Seguros" className="h-14 w-auto self-start" />
+        <div className="my-auto w-full max-w-[360px] py-12">
+          <h1 className="text-[28px] font-medium leading-tight">{titulo}</h1>
+          <p className="mb-8 mt-2 text-[13px] text-ink-600">{sub}</p>
+          {children}
         </div>
-        {children}
+        <p className="text-[11px] text-ink-400">THP Seguros · Sistema de siniestros</p>
+      </div>
+      <div className="relative hidden overflow-hidden bg-[#0B0F17] lg:block">
+        {/* Retícula fina y halo con el azul del logo */}
+        <div className="absolute inset-0 opacity-[0.18] [background-image:linear-gradient(#ffffff14_1px,transparent_1px),linear-gradient(90deg,#ffffff14_1px,transparent_1px)] [background-size:44px_44px]" />
+        <div className="absolute -right-32 -top-32 h-[520px] w-[520px] rounded-full bg-thp opacity-40 blur-[120px]" />
+        <div className="absolute -bottom-40 left-10 h-[420px] w-[420px] rounded-full bg-[#9A9A9A] opacity-10 blur-[120px]" />
+        <div className="relative flex h-full flex-col justify-end p-14 text-white">
+          <img src="/logo-thp-simbolo.png" alt="" className="mb-10 h-16 w-auto self-start opacity-90 brightness-[1.6] grayscale" />
+          <p className="max-w-md font-display text-[34px] font-light leading-tight tracking-tight">Cada siniestro, de principio a fin, en un solo lugar.</p>
+          <p className="mt-4 font-display text-[13px] font-light italic text-white/50">“Asesorar para decidir”</p>
+        </div>
       </div>
     </div>
   )
@@ -162,12 +215,12 @@ function Login() {
     login.mutate({ username, password })
   }
   return (
-    <Pantalla titulo="Inicia sesión">
-      <form onSubmit={enviar} className="space-y-3">
+    <Pantalla titulo="Bienvenido" sub="Entra con tu usuario de THP Seguros.">
+      <form onSubmit={enviar} className="space-y-4">
         <Field label="Usuario"><Input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus autoComplete="username" /></Field>
         <Field label="Contraseña"><Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" /></Field>
         <ErrorBox error={login.error && errorMsg(login.error)} />
-        <Button type="submit" className="w-full" disabled={login.isPending}>Entrar</Button>
+        <Button type="submit" className="h-10 w-full" disabled={login.isPending}>Entrar</Button>
       </form>
     </Pantalla>
   )
@@ -179,12 +232,12 @@ function CambiarPassword() {
   const [nueva, setNueva] = useState("")
   const cambiar = trpc.auth.cambiarPassword.useMutation({ onSuccess: () => utils.auth.me.invalidate() })
   return (
-    <Pantalla titulo="Cambia tu contraseña temporal">
-      <form onSubmit={(e) => { e.preventDefault(); cambiar.mutate({ actual, nueva }) }} className="space-y-3">
+    <Pantalla titulo="Nueva contraseña" sub="Tu contraseña es temporal. Elige una propia para continuar.">
+      <form onSubmit={(e) => { e.preventDefault(); cambiar.mutate({ actual, nueva }) }} className="space-y-4">
         <Field label="Contraseña temporal"><Input type="password" value={actual} onChange={(e) => setActual(e.target.value)} /></Field>
         <Field label="Nueva contraseña" hint="Mínimo 10 caracteres, con letras y números."><Input type="password" value={nueva} onChange={(e) => setNueva(e.target.value)} autoComplete="new-password" /></Field>
         <ErrorBox error={cambiar.error && errorMsg(cambiar.error)} />
-        <Button type="submit" className="w-full" disabled={cambiar.isPending}>Guardar</Button>
+        <Button type="submit" className="h-10 w-full" disabled={cambiar.isPending}>Guardar y entrar</Button>
       </form>
     </Pantalla>
   )

@@ -22,16 +22,16 @@ export default function Contratantes() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {lista.data?.map((c) => (
           <Link key={c.id} to={`/contratantes/${c.id}`} className="rounded-card border border-line bg-surface p-5 hover:border-line-strong">
-            <p className="text-lg font-semibold leading-tight">{c.nombre}</p>
+            <p className="text-lg font-medium leading-tight">{c.nombre}</p>
             <p className="text-sm text-ink-600">{c.tipoPersona === "moral" ? "Persona moral" : "Persona física"}{c.clienteDesde ? ` · Cliente desde ${c.clienteDesde}` : ""}</p>
             <div className="mt-3 flex flex-wrap gap-1.5">
               {c.ramos.map((r) => <Badge key={r}>{RAMO_LABEL[r]}</Badge>)}
               {!c.ramos.length && <span className="text-xs text-ink-400">Sin pólizas capturadas</span>}
             </div>
             <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line-soft pt-3 text-sm">
-              <div><p className="text-ink-600">Siniestros</p><p className="font-semibold">{c.siniestros}</p></div>
-              <div><p className="text-ink-600">Abiertos</p><p className="font-semibold">{c.abiertos}</p></div>
-              <div><p className="text-ink-600">Pagado</p><p className="font-semibold">{moneda(c.pagado)}</p></div>
+              <div><p className="text-ink-600">Siniestros</p><p className="font-medium">{c.siniestros}</p></div>
+              <div><p className="text-ink-600">Abiertos</p><p className="font-medium">{c.abiertos}</p></div>
+              <div><p className="text-ink-600">Pagado</p><p className="font-medium">{moneda(c.pagado)}</p></div>
             </div>
           </Link>
         ))}

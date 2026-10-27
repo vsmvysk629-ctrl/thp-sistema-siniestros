@@ -79,3 +79,8 @@ export function descargarCSV(nombre: string, encabezados: string[], filas: (stri
   a.click()
   URL.revokeObjectURL(url)
 }
+
+/** Días naturales entre dos fechas ISO. */
+export function diasEntre(desde: string, hasta: string) {
+  return Math.max(0, Math.round((Date.parse(hasta) - Date.parse(desde)) / 86_400_000))
+}

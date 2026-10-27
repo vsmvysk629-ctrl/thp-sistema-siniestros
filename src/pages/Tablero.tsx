@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react"
 import { RAMO_LABEL } from "@contracts/catalogos"
 import { ESTADO_LABEL } from "@contracts/flujo"
 import { trpc } from "@/providers/trpc"
-import { Avatar, Badge, Button, Card, EstadoBadge, Folio, Kpi, PageHeader, Tabla } from "@/components/ui"
+import { Avatar, Badge, Barra, Button, Card, EstadoBadge, Folio, Kpi, PageHeader, Tabla } from "@/components/ui"
 import { corto, descargarCSV, fechaLarga, fmtFecha, hoyISO, monedaCorta, saludo } from "@/lib/format"
 import { esEditor, useSesion } from "@/lib/sesion"
 
@@ -61,11 +61,11 @@ export default function Tablero() {
                 <Link to={`/siniestros/${a.siniestroId}`} className="flex gap-3 px-2 py-3 hover:bg-subtle">
                   <span className={clsx("mt-1.5 h-2 w-2 shrink-0 rounded-full", SEV[a.sev])} />
                   <div className="min-w-0 flex-1">
-                    <p className="text-[15px]"><span className="font-semibold">{a.titulo}</span> · <Folio>{a.folio}</Folio></p>
+                    <p className="text-[15px]"><span className="font-medium">{a.titulo}</span> · <Folio>{a.folio}</Folio></p>
                     <p className="text-sm text-ink-600">{a.detalle}</p>
                   </div>
                   <div className="shrink-0 text-right text-xs text-ink-600">
-                    <p className="font-semibold text-ink-900">{corto(a.quien)}</p>
+                    <p className="font-medium text-ink-900">{corto(a.quien)}</p>
                     <p>{a.cuando && /^\d{4}-/.test(a.cuando) ? fmtFecha(a.cuando) : a.cuando?.replace(/(\d{4}-\d{2}-\d{2})/, (m) => fmtFecha(m))}</p>
                   </div>
                 </Link>
@@ -77,30 +77,30 @@ export default function Tablero() {
           <div className="space-y-4">
             {porGrupo.map((g) => (
               <button key={g.grupo} className="block w-full text-left" onClick={() => nav(`/siniestros?ramo=${g.grupo}`)}>
-                <div className="flex justify-between text-sm"><span>{g.nombre}</span><span className="font-semibold">{g.n}</span></div>
-                <div className="mt-1.5 h-2 rounded-full bg-line-soft"><div className="h-2 rounded-full bg-navy-900" style={{ width: `${Math.max(g.n ? 4 : 0, (g.n / maxGrupo) * 100)}%` }} /></div>
+                <div className="flex justify-between text-sm"><span>{g.nombre}</span><span className="font-medium">{g.n}</span></div>
+                <div className="mt-2"><Barra pct={Math.max(g.n ? 3 : 0, (g.n / maxGrupo) * 100)} /></div>
               </button>
             ))}
           </div>
           <div className="mt-auto flex justify-between border-t border-line-soft pt-4 text-sm">
             <span className="text-ink-600">Indemnizado vs reclamado</span>
-            <span className="font-semibold">{kpis.pctPagado}%</span>
+            <span className="font-medium">{kpis.pctPagado}%</span>
           </div>
         </Card>
       </div>
 
-      <Card title="Próximos compromisos" className="mt-5" actions={<Link to="/siniestros" className="flex items-center gap-1 text-sm font-semibold text-navy-900">Ver todos los siniestros <ArrowRight size={14} /></Link>}>
+      <Card title="Próximos compromisos" className="mt-5" actions={<Link to="/siniestros" className="flex items-center gap-1 text-sm font-medium text-navy-900">Ver todos los siniestros <ArrowRight size={14} /></Link>}>
         <Tabla cols={["Folio", "Contratante / asegurado", "Estatus", "Próxima acción", "Responsable"]} vacio={!compromisos.length && "Sin compromisos."}>
           {compromisos.map((r) => (
             <tr key={r.id} className="cursor-pointer align-top hover:bg-subtle" onClick={() => nav(`/siniestros/${r.id}`)}>
-              <td className="px-2.5 py-3"><Folio>{r.folio}</Folio></td>
-              <td className="px-2.5 py-3"><p className="font-semibold">{r.contratante}</p><p className="text-ink-600">{r.afectado}</p></td>
-              <td className="px-2.5 py-3"><EstadoBadge estado={r.estado} /></td>
-              <td className="px-2.5 py-3">
+              <td className="px-3 py-3.5"><Folio>{r.folio}</Folio></td>
+              <td className="px-3 py-3.5"><p className="font-medium">{r.contratante}</p><p className="text-ink-600">{r.afectado}</p></td>
+              <td className="px-3 py-3.5"><EstadoBadge estado={r.estado} /></td>
+              <td className="px-3 py-3.5">
                 <p>{r.proximaAccion}</p>
                 <Compromiso fecha={r.fechaCompromiso} hoy={hoy} />
               </td>
-              <td className="px-2.5 py-3"><span className="flex items-center gap-2"><Avatar nombre={r.ejecutivo} id={r.ejecutivoId} />{corto(r.ejecutivo)}</span></td>
+              <td className="px-3 py-3.5"><span className="flex items-center gap-2"><Avatar nombre={r.ejecutivo} id={r.ejecutivoId} />{corto(r.ejecutivo)}</span></td>
             </tr>
           ))}
         </Tabla>
@@ -111,5 +111,5 @@ export default function Tablero() {
 
 export function Compromiso({ fecha, hoy }: { fecha: string | null; hoy: string }) {
   if (!fecha) return null
-  return fecha < hoy ? <p className="font-semibold text-tone-red">Vencido: {fmtFecha(fecha)}</p> : <p className="text-ink-600">Compromiso: {fmtFecha(fecha)}</p>
+  return fecha < hoy ? <p className="font-medium text-tone-red">Vencido: {fmtFecha(fecha)}</p> : <p className="text-ink-600">Compromiso: {fmtFecha(fecha)}</p>
 }
