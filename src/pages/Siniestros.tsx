@@ -1,20 +1,32 @@
+import { useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router"
 import clsx from "clsx"
 import { GRUPOS, GRUPO_DE, GRUPO_LABEL, RAMO_LABEL, type Grupo } from "@contracts/catalogos"
 import { ESTADO_LABEL, GRUPOS_ESTADO, type GrupoEstado } from "@contracts/flujo"
 import { trpc } from "@/providers/trpc"
-import { Avatar, Button, Card, EstadoBadge, Field, Folio, Input, PageHeader, Select, Tabla } from "@/components/ui"
-import { corto, descargarCSV, fmtFecha, hoyISO, moneda } from "@/lib/format"
-import { esEditor, useSesion } from "@/lib/sesion"
+import { Avatar, Button, Card, EstadoBadge, Field, Folio, Input, PageHeader, Segmento, Select, Tabla } from "@/components/ui"
+import { corto, descargarCSV, diasEntre, fmtFecha, hoyISO, moneda } from "@/lib/format"
+import { esEditor, guardarPreferencia, leerPreferencia, useSesion, type Vista } from "@/lib/sesion"
 import { Compromiso } from "./Tablero"
 
 export default function Siniestros() {
-  const { usuario, nuevoSiniestro } = useSesion()
+  const { usuario, nuevoSiniestro, vista, setVista } = useSesion()
   const nav = useNavigate()
   const [p, setP] = useSearchParams()
+  const claveFiltros = `thp-filtros-${usuario.id}`
+  // Sin filtros en la dirección, se recuperan los últimos que usó esta persona.
+  useEffect(() => {
+    if ([...p.keys()].length === 0) {
+      const guardados = leerPreferencia<string>(claveFiltros, "")
+      if (guardados) setP(new URLSearchParams(guardados), { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => guardarPreferencia(claveFiltros, p.toString()), [p, claveFiltros])
   const q = p.get("q") ?? ""
   const estado = (p.get("estado") ?? "abiertos") as GrupoEstado
-  const ejecutivoId = p.get("ejecutivo") ? Number(p.get("ejecutivo")) : undefined
+  const mios = vista === "mios" && !p.get("ejecutivo")
+  const ejecutivoId = p.get("ejecutivo") ? Number(p.get("ejecutivo")) : mios ? usuario.id : undefined
   const aseguradoraId = p.get("aseguradora") ? Number(p.get("aseguradora")) : undefined
   const ramo = (p.get("ramo") ?? "") as Grupo | ""
   const cambiar = (k: string, v: string) => {
@@ -45,6 +57,7 @@ export default function Siniestros() {
         sub={`${filas.length} resultado${filas.length === 1 ? "" : "s"}`}
         acciones={
           <>
+            {esEditor(usuario) && <Segmento<Vista> valor={vista} onChange={(v) => { setVista(v); cambiar("ejecutivo", "") }} opciones={[{ id: "mios", label: "Míos" }, { id: "todos", label: "Todo el despacho" }]} />}
             <Button variant="secondary" onClick={exportar}>Exportar</Button>
             {esEditor(usuario) && <Button onClick={() => nuevoSiniestro()}>+ Nuevo siniestro</Button>}
           </>
@@ -59,8 +72,8 @@ export default function Siniestros() {
             </Select>
           </Field>
           <Field label="Ejecutivo">
-            <Select value={ejecutivoId ?? ""} onChange={(e) => cambiar("ejecutivo", e.target.value)}>
-              <option value="">Todos</option>
+            <Select value={p.get("ejecutivo") ?? ""} onChange={(e) => cambiar("ejecutivo", e.target.value)}>
+              <option value="">{mios ? "Solo míos" : "Todos"}</option>
               {usuarios.data?.filter((u) => u.role !== "consulta").map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
             </Select>
           </Field>
@@ -84,16 +97,17 @@ export default function Siniestros() {
       </Card>
       <Card pad={false} className="px-3 py-2">
         <Tabla
-          cols={["Folio THP", "Contratante / asegurado", "Ramo", "Compañía", "Estatus", "Próxima acción", "Responsable", <span key="r" className="block text-right">Reclamado</span>]}
+          cols={["Folio THP", "Contratante / asegurado", "Ramo", "Compañía", "Estatus", <span key="d" className="block text-right">Días</span>, "Próxima acción", "Responsable", <span key="r" className="block text-right">Reclamado</span>]}
           vacio={lista.isLoading ? "Cargando…" : !filas.length && "No hay siniestros con estos filtros."}
         >
           {filas.map((r) => (
             <tr key={r.id} className="cursor-pointer align-top hover:bg-subtle" onClick={() => nav(`/siniestros/${r.id}`)}>
-              <td className="px-3 py-3.5"><Folio>{r.folio}</Folio><p className="text-ink-600">Ocurrió {fmtFecha(r.fechaOcurrido)}</p></td>
+              <td className="px-3 py-3.5"><Folio>{r.folio}</Folio><p className="text-[12px] text-ink-400">Ocurrió {fmtFecha(r.fechaOcurrido)}</p></td>
               <td className="max-w-[240px] px-3 py-3.5"><p className="font-medium">{r.contratante}</p><p className="text-ink-600">{r.afectado}</p></td>
               <td className="px-3 py-3.5"><p>{RAMO_LABEL[r.ramo]}</p><p className="text-ink-600">{r.tipo}</p></td>
               <td className="px-3 py-3.5"><p>{r.aseguradora}</p><p className="text-ink-600">{r.numeroSiniestro ?? "Sin número aún"}</p></td>
               <td className="px-3 py-3.5"><EstadoBadge estado={r.estado} /></td>
+              <td className="px-3 py-3.5 text-right font-mono text-[12px] text-ink-600">{r.estado === "cerrado" ? "—" : diasEntre(r.fechaReporte, hoy)}</td>
               <td className="max-w-[240px] px-3 py-3.5">{r.proximaAccion ? <><p>{r.proximaAccion}</p><Compromiso fecha={r.fechaCompromiso} hoy={hoy} /></> : <span className="text-ink-400">—</span>}</td>
               <td className="px-3 py-3.5"><span className="flex items-center gap-2 whitespace-nowrap"><Avatar nombre={r.ejecutivo} id={r.ejecutivoId} />{corto(r.ejecutivo)}</span></td>
               <td className="px-3 py-3.5 text-right font-medium">{moneda(r.reclamado)}</td>

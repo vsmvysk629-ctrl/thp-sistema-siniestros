@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react"
 import { useNavigate } from "react-router"
-import { RAMOS, RAMO_LABEL, TIPOS, documentosPara, type Ramo } from "@contracts/catalogos"
+import { RAMOS, RAMO_LABEL, type Ramo } from "@contracts/catalogos"
 import { trpc } from "@/providers/trpc"
 import { Button, ErrorBox, Field, Input, Modal, Select, Textarea } from "@/components/ui"
 import { errorMsg, hoyISO } from "@/lib/format"
@@ -13,12 +13,14 @@ export default function NuevoSiniestro({ contratanteId, onClose }: { contratante
   const contratantes = trpc.catalogos.contratantes.useQuery({})
   const aseguradoras = trpc.catalogos.aseguradoras.useQuery()
   const usuarios = trpc.catalogos.usuarios.useQuery()
+  const cfg = trpc.configuracion.get.useQuery()
+  const tiposDe = (r: Ramo) => (cfg.data?.tipos ?? []).filter((t) => t.ramo === r && t.activo).map((t) => t.nombre)
   const [f, setF] = useState({
     contratanteId: contratanteId ? String(contratanteId) : "",
     polizaId: "",
     polizaTexto: "",
     ramo: "autos" as Ramo,
-    tipo: TIPOS.autos[0],
+    tipo: "",
     aseguradoraId: "",
     afectado: "",
     fechaOcurrido: hoyISO(),
@@ -31,8 +33,13 @@ export default function NuevoSiniestro({ contratanteId, onClose }: { contratante
 
   // Al elegir póliza, la compañía y el ramo salen de ella.
   useEffect(() => {
-    if (poliza) setF((x) => ({ ...x, ramo: poliza.ramo, aseguradoraId: String(poliza.aseguradoraId), tipo: TIPOS[poliza.ramo].includes(x.tipo) ? x.tipo : TIPOS[poliza.ramo][0] }))
+    if (poliza) setF((x) => ({ ...x, ramo: poliza.ramo, aseguradoraId: String(poliza.aseguradoraId) }))
   }, [poliza])
+  // El tipo siempre debe ser uno de los del ramo.
+  const tipos = tiposDe(f.ramo)
+  useEffect(() => {
+    if (tipos.length && !tipos.includes(f.tipo)) setF((x) => ({ ...x, tipo: tipos[0] }))
+  }, [tipos, f.tipo])
 
   const crear = trpc.siniestros.create.useMutation({
     onSuccess: (r) => {
@@ -57,7 +64,11 @@ export default function NuevoSiniestro({ contratanteId, onClose }: { contratante
       ejecutivoId: Number(f.ejecutivoId),
     })
   }
-  const docs = documentosPara(f.ramo, f.tipo)
+  const preview = trpc.configuracion.documentosPreview.useQuery(
+    { ramo: f.ramo, tipo: f.tipo, aseguradoraId: f.aseguradoraId ? Number(f.aseguradoraId) : null },
+    { enabled: !!f.tipo, placeholderData: (prev) => prev },
+  )
+  const docs = preview.data ?? []
 
   return (
     <Modal title="Nuevo siniestro" onClose={onClose} ancho="max-w-3xl">
@@ -81,13 +92,13 @@ export default function NuevoSiniestro({ contratanteId, onClose }: { contratante
             <Field label="Vigencia"><Input value={`${poliza?.vigenciaInicio ?? "—"} a ${poliza?.vigenciaFin ?? "—"}`} disabled /></Field>
           )}
           <Field label="Ramo">
-            <Select value={f.ramo} onChange={(e) => setF((x) => ({ ...x, ramo: e.target.value as Ramo, tipo: TIPOS[e.target.value as Ramo][0] }))} disabled={!!f.polizaId}>
+            <Select value={f.ramo} onChange={(e) => setF((x) => ({ ...x, ramo: e.target.value as Ramo }))} disabled={!!f.polizaId}>
               {RAMOS.map((r) => <option key={r} value={r}>{RAMO_LABEL[r]}</option>)}
             </Select>
           </Field>
           <Field label="Tipo de siniestro">
             <Select value={f.tipo} onChange={set("tipo")}>
-              {TIPOS[f.ramo].map((t) => <option key={t}>{t}</option>)}
+              {tipos.map((t) => <option key={t}>{t}</option>)}
             </Select>
           </Field>
           <Field label="Compañía">

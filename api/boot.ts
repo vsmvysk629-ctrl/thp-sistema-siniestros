@@ -6,6 +6,7 @@ import { appRouter } from "./router";
 import { createContext } from "./context";
 import { env } from "./lib/env";
 import { asegurarAdministrador, asegurarAseguradoras } from "./auth-router";
+import { asegurarCatalogos } from "./queries/configuracion";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 
@@ -35,6 +36,7 @@ if (env.isProduction) {
 
 if (process.env.VITEST === undefined) {
   await asegurarAseguradoras().catch((e) => console.error("[boot] No se pudieron crear las aseguradoras", e));
+  await asegurarCatalogos().catch((e) => console.error("[boot] No se pudieron crear los catálogos", e));
   await asegurarAdministrador({
     username: env.adminUsername,
     password: env.adminPassword,

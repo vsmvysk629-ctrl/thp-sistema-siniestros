@@ -4,17 +4,18 @@ import { ArrowRight } from "lucide-react"
 import { RAMO_LABEL } from "@contracts/catalogos"
 import { ESTADO_LABEL } from "@contracts/flujo"
 import { trpc } from "@/providers/trpc"
-import { Avatar, Badge, Barra, Button, Card, EstadoBadge, Folio, Kpi, PageHeader, Tabla } from "@/components/ui"
+import { Avatar, Badge, Barra, Button, Card, EstadoBadge, Folio, Kpi, PageHeader, Segmento, Tabla } from "@/components/ui"
 import { corto, descargarCSV, fechaLarga, fmtFecha, hoyISO, monedaCorta, saludo } from "@/lib/format"
-import { esEditor, useSesion } from "@/lib/sesion"
+import { esEditor, useSesion, type Vista } from "@/lib/sesion"
 
 const SEV = { alta: "bg-sev-alta", media: "bg-sev-media", baja: "bg-sev-baja" }
 
 export default function Tablero() {
-  const { usuario, nuevoSiniestro } = useSesion()
+  const { usuario, nuevoSiniestro, vista, setVista } = useSesion()
   const nav = useNavigate()
-  const t = trpc.tablero.resumen.useQuery()
-  const lista = trpc.siniestros.list.useQuery({ grupoEstado: "todos" })
+  const mios = vista === "mios"
+  const t = trpc.tablero.resumen.useQuery({ soloMios: mios })
+  const lista = trpc.siniestros.list.useQuery({ grupoEstado: "todos", ejecutivoId: mios ? usuario.id : undefined })
   if (!t.data) return <p className="text-sm text-ink-400">Cargando…</p>
   const { kpis, alertas, porGrupo, compromisos } = t.data
   const maxGrupo = Math.max(1, ...porGrupo.map((g) => g.n))
@@ -34,13 +35,14 @@ export default function Tablero() {
         titulo={`${saludo()}, ${corto(usuario.nombre)}`}
         acciones={
           <>
+            {esEditor(usuario) && <Segmento<Vista> valor={vista} onChange={setVista} opciones={[{ id: "mios", label: "Míos" }, { id: "todos", label: "Todo el despacho" }]} />}
             <Button variant="secondary" onClick={exportar}>Exportar a Excel</Button>
             {esEditor(usuario) && <Button onClick={() => nuevoSiniestro()}>+ Nuevo siniestro</Button>}
           </>
         }
       />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <Kpi label="Siniestros registrados" valor={kpis.registrados} nota="Histórico del despacho" />
+        <Kpi label="Siniestros registrados" valor={kpis.registrados} nota={mios ? "A tu cargo" : "Histórico del despacho"} />
         <Kpi label="Abiertos" valor={kpis.abiertos} nota="En seguimiento" />
         <Kpi label="Cerrados" valor={kpis.cerrados} nota="Concluidos" />
         <Kpi label="Pendientes de documentación" valor={kpis.pendientesDoc} nota="Incluye info. adicional" />

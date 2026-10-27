@@ -69,7 +69,7 @@ export default function Expediente() {
         </div>
         {s.estado !== "cerrado" && (
           <div className="flex flex-wrap items-center gap-x-8 gap-y-3 border-t border-line px-5 py-4">
-            <div className="min-w-0 flex-1 border-l-2 border-thp pl-3">
+            <div className="min-w-0 flex-1 basis-full border-l-2 border-thp pl-3 sm:basis-auto">
               <Eyebrow>Próxima acción</Eyebrow>
               <p className="mt-0.5 text-[15px] font-medium">{s.proximaAccion ?? <span className="text-ink-400">Sin acción definida</span>}</p>
             </div>

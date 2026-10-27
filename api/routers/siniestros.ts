@@ -3,7 +3,8 @@ import { alias } from "drizzle-orm/mysql-core";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import * as s from "@db/schema";
-import { GRUPOS, RAMOS, RESPONSABILIDADES, documentosPara, ramosDeGrupo } from "@contracts/catalogos";
+import { GRUPOS, RAMOS, RESPONSABILIDADES, ramosDeGrupo } from "@contracts/catalogos";
+import { documentosDe, leerAjustes } from "../queries/configuracion";
 import { ESTADOS, ESTADO_LABEL, GRUPOS_ESTADO, validarTransicion, type GrupoEstado } from "@contracts/flujo";
 import { authedQuery, createRouter, editorQuery } from "../middleware";
 import { getDb } from "../queries/connection";
@@ -211,7 +212,8 @@ export const siniestrosRouter = createRouter({
       const hoy = hoyISO();
       if (input.fechaOcurrido > hoy) throw new TRPCError({ code: "BAD_REQUEST", message: "La fecha de ocurrencia no puede ser futura." });
       const responsable = (await db.select({ nombre: s.users.nombre }).from(s.users).where(eq(s.users.id, input.ejecutivoId)))[0];
-      const compromiso = hoyISO(new Date(Date.now() + 2 * 86_400_000));
+      const ajustes = await leerAjustes(db);
+      const compromiso = hoyISO(new Date(Date.now() + ajustes.diasCompromisoInicial * 86_400_000));
       return db.transaction(async (tx) => {
         const folio = await siguienteFolio(tx);
         const [{ id }] = await tx
@@ -223,12 +225,12 @@ export const siniestrosRouter = createRouter({
             ramo,
             folio,
             fechaReporte: hoy,
-            proximaAccion: "Solicitar documentación al asegurado",
+            proximaAccion: ajustes.accionInicial,
             fechaCompromiso: compromiso,
             creadoPorId: ctx.user.id,
           })
           .$returningId();
-        const docs = documentosPara(ramo, input.tipo);
+        const docs = await documentosDe(tx, ramo, input.tipo, aseguradoraId);
         await tx.insert(s.documentos).values(docs.map((nombre, orden) => ({ siniestroId: id, nombre, orden })));
         await registrarEvento(tx, {
           siniestroId: id,

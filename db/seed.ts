@@ -7,6 +7,7 @@ import * as s from "./schema";
 import { getDb } from "../api/queries/connection";
 import { hashPassword } from "../api/auth/password";
 import { asegurarAseguradoras } from "../api/auth-router";
+import { asegurarCatalogos } from "../api/queries/configuracion";
 import { createCallerFactory } from "../api/middleware";
 import { appRouter } from "../api/router";
 import type { Rol } from "../contracts/constants";
@@ -24,6 +25,7 @@ if ((await db.select({ id: s.siniestros.id }).from(s.siniestros).limit(1)).lengt
 }
 
 await asegurarAseguradoras();
+await asegurarCatalogos();
 const aseg = Object.fromEntries((await db.select().from(s.aseguradoras)).map((a) => [a.nombre, a.id]));
 
 async function usuario(username: string, nombre: string, role: Rol, puesto: string) {
@@ -73,6 +75,10 @@ const pol: Record<string, number> = {};
 for (const [c, numero, a, ramo, descripcion] of polizasDef) {
   pol[numero] = (await adm.catalogos.crearPoliza({ numero, aseguradoraId: aseg[a], contratanteId: cid[c], ramo, descripcion, vigenciaInicio: "2026-01-01", vigenciaFin: "2027-01-01" })).id;
 }
+
+// Ejemplos de configuración (ficticios): un documento extra y días de aviso propios para una compañía.
+await adm.configuracion.guardarPlantilla({ ramo: "autos", tipo: null, aseguradoraId: aseg["Quálitas"], nombre: "Formato de declaración de la aseguradora (demo)" });
+await adm.configuracion.guardarAseguradora({ id: aseg["Quálitas"], nombre: "Quálitas", diasSinRespuesta: 10, notas: "Dato de demostración" });
 
 type Caso = {
   quien: s.User;

@@ -6,10 +6,11 @@ import { esAbierto } from "@contracts/flujo";
 import { authedQuery, createRouter } from "../middleware";
 import { getDb } from "../queries/connection";
 import { hoyISO } from "../queries/siniestros";
+import { AJUSTES_DEFAULT, leerAjustes } from "../queries/configuracion";
 import { listarSiniestros, type FilaSiniestro } from "./siniestros";
 
-/** Días sin respuesta de la aseguradora a partir de los cuales se avisa. */
-export const DIAS_SIN_MOVIMIENTO = 15;
+/** Días sin respuesta de la aseguradora a partir de los cuales se avisa (valor de fábrica). */
+export const DIAS_SIN_MOVIMIENTO = AJUSTES_DEFAULT.diasSinMovimiento;
 
 const dias = (desde: string, hasta: string) => Math.round((Date.parse(hasta) - Date.parse(desde)) / 86_400_000);
 
@@ -29,6 +30,14 @@ function tiempoResolucion(rows: FilaSiniestro[], pagos: Map<number, string>) {
   return ds.length ? Math.round(ds.reduce((a, b) => a + b, 0) / ds.length) : null;
 }
 
+/** Días sin respuesta por aseguradora; las que no tienen el suyo usan el ajuste general. */
+async function limitesSinRespuesta() {
+  const db = getDb();
+  const [ajustes, ases] = await Promise.all([leerAjustes(db), db.select({ id: s.aseguradoras.id, dias: s.aseguradoras.diasSinRespuesta }).from(s.aseguradoras)]);
+  const porId = new Map(ases.map((a) => [a.id, a.dias]));
+  return (id: number) => porId.get(id) ?? ajustes.diasSinMovimiento;
+}
+
 export type Alerta = {
   sev: "alta" | "media" | "baja";
   titulo: string;
@@ -39,7 +48,7 @@ export type Alerta = {
   cuando: string | null;
 };
 
-export function alertasDe(rows: FilaSiniestro[], hoy: string): Alerta[] {
+export function alertasDe(rows: FilaSiniestro[], hoy: string, limite: (aseguradoraId: number) => number = () => DIAS_SIN_MOVIMIENTO): Alerta[] {
   const out: Alerta[] = [];
   for (const r of rows.filter((x) => esAbierto(x.estado))) {
     const base = { siniestroId: r.id, folio: r.folio, quien: r.ejecutivo };
@@ -52,7 +61,7 @@ export function alertasDe(rows: FilaSiniestro[], hoy: string): Alerta[] {
     if (r.estado === "documentacion_completa") out.push({ ...base, sev: "media", titulo: "Listo para ingresar", detalle: det("Documentación completa"), cuando: r.fechaCompromiso });
     if (r.estado === "ingresado" || r.estado === "en_revision") {
       const d = dias(hoyISO(r.ultimoMovimiento), hoy);
-      if (d >= DIAS_SIN_MOVIMIENTO) {
+      if (d >= limite(r.aseguradoraId)) {
         out.push({ ...base, sev: "media", titulo: `Sin movimiento hace ${d} días`, detalle: det(`${r.aseguradora} no ha respondido`), cuando: `Desde ${hoyISO(r.ultimoMovimiento)}` });
       }
     }
@@ -77,15 +86,16 @@ function agrupar(rows: FilaSiniestro[], clave: (r: FilaSiniestro) => string | nu
 }
 
 export const tableroRouter = createRouter({
-  resumen: authedQuery.query(async () => {
-    const rows = await listarSiniestros({});
+  /** Con soloMios, el tablero se limita a los siniestros a cargo de quien lo consulta. */
+  resumen: authedQuery.input(z.object({ soloMios: z.boolean().optional() }).optional()).query(async ({ ctx, input }) => {
+    const rows = await listarSiniestros(input?.soloMios ? { ejecutivoId: ctx.user.id } : {});
     const hoy = hoyISO();
     const abiertos = rows.filter((r) => esAbierto(r.estado));
     const cuenta = (...es: FilaSiniestro["estado"][]) => rows.filter((r) => es.includes(r.estado)).length;
     const reclamado = rows.reduce((a, r) => a + r.reclamado, 0);
     const pagado = rows.reduce((a, r) => a + r.pagado, 0);
     const pendiente = abiertos.reduce((a, r) => a + (r.autorizado !== null ? Math.max(0, r.autorizado - r.pagado) : 0), 0);
-    const alertas = alertasDe(rows, hoy);
+    const alertas = alertasDe(rows, hoy, await limitesSinRespuesta());
     const porGrupo = GRUPOS.map((g) => ({ grupo: g, nombre: GRUPO_LABEL[g], n: abiertos.filter((r) => GRUPO_DE[r.ramo] === g).length }));
     const compromisos = abiertos
       .filter((r) => r.proximaAccion)

@@ -9,6 +9,7 @@ import {
   mysqlTable,
   text,
   timestamp,
+  uniqueIndex,
   varchar,
 } from "drizzle-orm/mysql-core";
 import { ROLES } from "../contracts/constants";
@@ -54,6 +55,9 @@ export const aseguradoras = mysqlTable("aseguradoras", {
   id: id(),
   nombre: varchar("nombre", { length: 64 }).notNull().unique(),
   telefonoCabina: varchar("telefonoCabina", { length: 32 }),
+  /** Días sin respuesta de esta compañía antes de avisar. Vacío = el valor general. */
+  diasSinRespuesta: int("diasSinRespuesta"),
+  notas: varchar("notas", { length: 500 }),
   activa: boolean("activa").default(true).notNull(),
 });
 export type Aseguradora = typeof aseguradoras.$inferSelect;
@@ -237,3 +241,45 @@ export const terceros = mysqlTable(
   (t) => [index("ter_sin_idx").on(t.siniestroId)],
 );
 export type Tercero = typeof terceros.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Configuración que edita el administrador
+// ---------------------------------------------------------------------------
+export const tiposSiniestro = mysqlTable(
+  "tipos_siniestro",
+  {
+    id: id(),
+    ramo: mysqlEnum("ramo", RAMOS).notNull(),
+    nombre: varchar("nombre", { length: 64 }).notNull(),
+    orden: int("orden").default(0).notNull(),
+    activo: boolean("activo").default(true).notNull(),
+  },
+  (t) => [uniqueIndex("tipo_ramo_nombre").on(t.ramo, t.nombre)],
+);
+export type TipoSiniestro = typeof tiposSiniestro.$inferSelect;
+
+/**
+ * Documentos que se piden al abrir un expediente. Aplican a un ramo; opcionalmente
+ * solo a un tipo (si hay alguno para el tipo, reemplazan a los generales) y,
+ * opcionalmente, solo a una aseguradora (se suman a los demás).
+ */
+export const plantillasDocumento = mysqlTable(
+  "plantillas_documento",
+  {
+    id: id(),
+    ramo: mysqlEnum("ramo", RAMOS).notNull(),
+    tipo: varchar("tipo", { length: 64 }),
+    aseguradoraId: ref("aseguradoraId"),
+    nombre: varchar("nombre", { length: 255 }).notNull(),
+    orden: int("orden").default(0).notNull(),
+    activo: boolean("activo").default(true).notNull(),
+  },
+  (t) => [index("pla_ramo_idx").on(t.ramo)],
+);
+export type PlantillaDocumento = typeof plantillasDocumento.$inferSelect;
+
+/** Ajustes generales (clave/valor). */
+export const ajustes = mysqlTable("ajustes", {
+  clave: varchar("clave", { length: 64 }).primaryKey(),
+  valor: varchar("valor", { length: 500 }).notNull(),
+});

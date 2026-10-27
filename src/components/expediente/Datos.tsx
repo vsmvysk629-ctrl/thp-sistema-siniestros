@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react"
 import { Link } from "react-router"
-import { RAMO_LABEL, RESPONSABILIDADES, RESPONSABILIDAD_LABEL, TIPOS, esAutos, type Responsabilidad } from "@contracts/catalogos"
+import { RAMO_LABEL, RESPONSABILIDADES, RESPONSABILIDAD_LABEL, esAutos, type Responsabilidad } from "@contracts/catalogos"
 import { ESTADO_LABEL } from "@contracts/flujo"
 import { trpc } from "@/providers/trpc"
 import { Button, Card, Dato, ErrorBox, EstadoBadge, Field, Folio, Input, Modal, Select, Textarea } from "@/components/ui"
@@ -102,6 +102,8 @@ function EditarDatos({ s, onClose }: { s: Exp; onClose: () => void }) {
   const { usuario } = useSesion()
   const refrescar = useRefrescar()
   const usuarios = trpc.catalogos.usuarios.useQuery()
+  const cfg = trpc.configuracion.get.useQuery()
+  const tipos = (cfg.data?.tipos ?? []).filter((t) => t.ramo === s.ramo && t.activo).map((t) => t.nombre)
   const autos = esAutos(s.ramo)
   const conConceptos = s.conceptos.length > 0
   const [f, setF] = useState({
@@ -124,7 +126,7 @@ function EditarDatos({ s, onClose }: { s: Exp; onClose: () => void }) {
         <div className="grid gap-3 sm:grid-cols-3">
           <Field label="Asegurado / afectado" className="sm:col-span-2"><Input value={f.afectado} onChange={set("afectado")} required /></Field>
           <Field label="Tipo">
-            <Select value={f.tipo} onChange={set("tipo")}>{[...new Set([f.tipo, ...TIPOS[s.ramo]])].map((t) => <option key={t}>{t}</option>)}</Select>
+            <Select value={f.tipo} onChange={set("tipo")}>{[...new Set([f.tipo, ...tipos])].map((t) => <option key={t}>{t}</option>)}</Select>
           </Field>
           <Field label="Fecha de ocurrencia"><Input type="date" max={hoyISO()} value={f.fechaOcurrido} onChange={set("fechaOcurrido")} required /></Field>
           <Field label="Fecha de reporte"><Input type="date" max={hoyISO()} value={f.fechaReporte} onChange={set("fechaReporte")} required /></Field>

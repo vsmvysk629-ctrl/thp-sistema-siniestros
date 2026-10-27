@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react"
 import { Navigate, NavLink, Route, Routes, useNavigate } from "react-router"
-import { Bell, ChartNoAxesColumn, FileText, LayoutGrid, LogOut, Plus, Search, ShieldCheck, Users } from "lucide-react"
+import { Bell, ChartNoAxesColumn, FileText, LayoutGrid, LogOut, Plus, Search, Settings2, ShieldCheck, Users } from "lucide-react"
 import clsx from "clsx"
 import { ROL_LABEL } from "@contracts/constants"
 import { trpc } from "@/providers/trpc"
 import { Avatar, Button, ErrorBox, Field, Input } from "@/components/ui"
 import { errorMsg } from "@/lib/format"
-import { SesionContext, esEditor, useSesion } from "@/lib/sesion"
+import { SesionContext, esEditor, guardarPreferencia, leerPreferencia, useSesion, type Usuario, type Vista } from "@/lib/sesion"
 import NuevoSiniestro from "@/components/NuevoSiniestro"
 import Tablero from "@/pages/Tablero"
 import Siniestros from "@/pages/Siniestros"
@@ -15,6 +15,7 @@ import Contratantes from "@/pages/Contratantes"
 import Contratante from "@/pages/Contratante"
 import Reportes from "@/pages/Reportes"
 import Usuarios from "@/pages/Usuarios"
+import Configuracion from "@/pages/Configuracion"
 
 const ICONO = { size: 17, strokeWidth: 1.6 }
 
@@ -24,9 +25,27 @@ export default function App() {
   if (me.isLoading) return <Cargando />
   if (!me.data) return <Login />
   if (me.data.debeCambiarPassword) return <CambiarPassword />
-  const u = me.data
+  return <ConSesion u={me.data} nuevo={nuevo} setNuevo={setNuevo} />
+}
+
+function ConSesion({ u, nuevo, setNuevo }: { u: Usuario; nuevo: { contratanteId?: number } | null; setNuevo: (n: { contratanteId?: number } | null) => void }) {
+  const clave = `thp-vista-${u.id}`
+  const [vista, setVistaState] = useState<Vista>(() => leerPreferencia<Vista>(clave, u.role === "ejecutivo" ? "mios" : "todos"))
+  const setVista = (v: Vista) => {
+    setVistaState(v)
+    guardarPreferencia(clave, v)
+  }
+  // Atajo: "n" abre un siniestro nuevo.
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName
+      if (e.key === "n" && !e.metaKey && !e.ctrlKey && !["INPUT", "TEXTAREA", "SELECT"].includes(tag) && esEditor(u)) setNuevo({})
+    }
+    window.addEventListener("keydown", k)
+    return () => window.removeEventListener("keydown", k)
+  }, [u, setNuevo])
   return (
-    <SesionContext.Provider value={{ usuario: u, nuevoSiniestro: (contratanteId) => setNuevo({ contratanteId }) }}>
+    <SesionContext.Provider value={{ usuario: u, nuevoSiniestro: (contratanteId) => setNuevo({ contratanteId }), vista, setVista }}>
       <div className="min-h-screen lg:flex">
         <Sidebar />
         <div className="min-w-0 flex-1">
@@ -41,6 +60,7 @@ export default function App() {
               <Route path="/contratantes/:id" element={<Contratante />} />
               <Route path="/reportes" element={<Reportes />} />
               {u.role === "admin" && <Route path="/usuarios" element={<Usuarios />} />}
+              {u.role === "admin" && <Route path="/configuracion" element={<Configuracion />} />}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
@@ -70,19 +90,20 @@ function EncabezadoImpresion() {
 }
 
 function Sidebar() {
-  const { usuario: u, nuevoSiniestro } = useSesion()
-  const t = trpc.tablero.resumen.useQuery()
+  const { usuario: u, nuevoSiniestro, vista } = useSesion()
+  const t = trpc.tablero.resumen.useQuery({ soloMios: vista === "mios" })
   const utils = trpc.useUtils()
   const logout = trpc.auth.logout.useMutation({ onSuccess: () => utils.invalidate() })
   return (
     <aside className="no-print flex flex-col border-b border-line bg-surface lg:sticky lg:top-0 lg:h-screen lg:w-[232px] lg:shrink-0 lg:border-b-0 lg:border-r">
       <div className="flex items-center gap-2 px-5 pb-6 pt-6">
-        <img src="/logo-thp.png" alt="THP Seguros" className="h-11 w-auto" />
+        <img src="/logo-thp.png" alt="THP Seguros" className="h-9 w-auto lg:h-11" />
       </div>
       {esEditor(u) && (
         <div className="px-3 pb-5">
           <button onClick={() => nuevoSiniestro()} className="flex h-9 w-full items-center justify-center gap-1.5 rounded-[10px] bg-ink-900 text-[13px] font-medium text-white transition-colors hover:bg-navy-800">
             <Plus size={15} strokeWidth={2} /> Nuevo siniestro
+            <kbd className="ml-1 hidden rounded border border-white/20 px-1 font-mono text-[10px] text-white/60 lg:inline">N</kbd>
           </button>
         </div>
       )}
@@ -96,6 +117,7 @@ function Sidebar() {
           <>
             <p className="hidden px-2 pb-2 pt-5 text-[11px] font-medium uppercase tracking-[0.09em] text-ink-400 lg:block">Administración</p>
             <Item to="/usuarios" icon={<ShieldCheck {...ICONO} />}>Usuarios y permisos</Item>
+            <Item to="/configuracion" icon={<Settings2 {...ICONO} />}>Configuración</Item>
           </>
         )}
       </nav>
@@ -122,7 +144,7 @@ function Item({ to, icon, n, children }: { to: string; icon: ReactNode; n?: numb
       className={({ isActive }) =>
         clsx(
           "relative flex items-center gap-2.5 whitespace-nowrap rounded-[9px] px-2.5 py-2 text-[13.5px] transition-colors",
-          isActive ? "bg-subtle font-medium text-ink-900 before:absolute before:-left-3 before:top-2 before:h-5 before:w-[2px] before:rounded-full before:bg-thp" : "text-ink-600 hover:bg-subtle/70 hover:text-ink-900",
+          isActive ? "bg-subtle font-medium text-ink-900 lg:before:absolute lg:before:-left-3 lg:before:top-2 lg:before:h-5 lg:before:w-[2px] lg:before:rounded-full lg:before:bg-thp" : "text-ink-600 hover:bg-subtle/70 hover:text-ink-900",
         )
       }
     >
@@ -137,7 +159,8 @@ function Topbar() {
   const nav = useNavigate()
   const [q, setQ] = useState("")
   const ref = useRef<HTMLInputElement>(null)
-  const t = trpc.tablero.resumen.useQuery()
+  const { vista } = useSesion()
+  const t = trpc.tablero.resumen.useQuery({ soloMios: vista === "mios" })
   // Atajo: "/" enfoca la búsqueda.
   useEffect(() => {
     const k = (e: KeyboardEvent) => {

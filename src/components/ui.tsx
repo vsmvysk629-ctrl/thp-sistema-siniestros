@@ -191,3 +191,21 @@ export const Barra = ({ pct, className }: { pct: number; className?: string }) =
     <div className={clsx("h-1 rounded-full", className ?? "bg-ink-900")} style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} />
   </div>
 )
+
+/** Control segmentado de dos o más opciones. */
+export function Segmento<T extends string>({ opciones, valor, onChange }: { opciones: { id: T; label: ReactNode }[]; valor: T; onChange: (v: T) => void }) {
+  return (
+    <div className="inline-flex h-9 items-center rounded-[10px] border border-line bg-surface p-0.5">
+      {opciones.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          onClick={() => onChange(o.id)}
+          className={clsx("h-full rounded-[8px] px-3 text-[12.5px] transition-colors", valor === o.id ? "bg-subtle font-medium text-ink-900" : "text-ink-400 hover:text-ink-900")}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  )
+}

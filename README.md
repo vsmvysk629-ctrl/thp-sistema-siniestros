@@ -12,6 +12,12 @@ Sistema propio de THP Seguros para dar seguimiento a los siniestros de **autos**
 - **Tablero**: 10 indicadores, alertas (compromiso vencido, info. pedida, rechazado, documentos pendientes, listo para ingresar, 15+ días sin respuesta, pago pendiente), abiertos por ramo y próximos compromisos.
 - **Bandeja** con filtros (búsqueda, estatus, ejecutivo, compañía, ramo) y **reportes** por ramo, compañía, ejecutivo y tiempos. Exporta a Excel (CSV) y a PDF (impresión); el expediente también se imprime completo.
 
+## Personalización (sin tocar código)
+- **Configuración** (solo administrador): documentos por ramo, por tipo y extra por aseguradora; tipos de siniestro por ramo; aseguradoras (teléfono de cabina, días de aviso propios, notas); ajustes generales (primera acción, días para el compromiso, días sin respuesta).
+- **Vista por usuario**: cada ejecutivo ve primero lo suyo (*Míos / Todo el despacho*) y el sistema recuerda sus últimos filtros.
+- **Atajos**: `/` busca, `N` abre un siniestro nuevo.
+- Imagen de THP Seguros: logo, azul de la marca, tipografías Montserrat e Inter.
+
 ## Desarrollo
 ```bash
 npm install

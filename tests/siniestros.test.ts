@@ -5,6 +5,7 @@ import { getDb } from "../api/queries/connection";
 import { baseLimpia, callerDe, crearUsuario } from "./helpers";
 import app from "../api/boot";
 import { asegurarAseguradoras } from "../api/auth-router";
+import { asegurarCatalogos } from "../api/queries/configuracion";
 
 // Datos ficticios: ningún nombre, póliza ni número es real.
 let admin: s.User, ej1: s.User, ej2: s.User, consulta: s.User;
@@ -15,6 +16,7 @@ const anio = String(new Date().getFullYear()).slice(-2);
 beforeAll(async () => {
   await baseLimpia();
   await asegurarAseguradoras();
+  await asegurarCatalogos();
   for (const a of await getDb().select().from(s.aseguradoras)) ase[a.nombre] = a.id;
   admin = await crearUsuario("admin", "admin");
   ej1 = await crearUsuario("ej1", "ejecutivo");
@@ -257,5 +259,55 @@ describe("HTTP", () => {
       body: JSON.stringify({ json: { username: "ej1", password: "otra" } }),
     });
     expect(res.status).toBe(401);
+  });
+});
+
+describe("configuración del administrador", () => {
+  it("solo el administrador cambia catálogos y ajustes", async () => {
+    await expect(callerDe(ej1).configuracion.guardarTipo({ ramo: "autos", nombre: "Granizo" })).rejects.toThrow(/permiso/);
+    await expect(callerDe(consulta).configuracion.plantillas()).rejects.toThrow(/permiso/);
+    const cfg = await callerDe(ej1).configuracion.get();
+    expect(cfg.tipos.some((t) => t.ramo === "flot" && t.nombre === "Colisión")).toBe(true);
+  });
+
+  it("los documentos de una aseguradora se suman a los del ramo", async () => {
+    const a = callerDe(admin);
+    await a.configuracion.guardarPlantilla({ ramo: "flot", tipo: null, aseguradoraId: ase["Quálitas"], nombre: "Formato de declaración (ficticio)" });
+    const qualitas = await a.configuracion.documentosPreview({ ramo: "flot", tipo: "Colisión", aseguradoraId: ase["Quálitas"] });
+    const atlas = await a.configuracion.documentosPreview({ ramo: "flot", tipo: "Colisión", aseguradoraId: ase["Atlas"] });
+    expect(qualitas).toContain("Formato de declaración (ficticio)");
+    expect(atlas).not.toContain("Formato de declaración (ficticio)");
+    expect(qualitas.length).toBe(atlas.length + 1);
+    const robo = await a.configuracion.documentosPreview({ ramo: "flot", tipo: "Robo total", aseguradoraId: null });
+    expect(robo).toContain("Baja de placas");
+    // El expediente nuevo (póliza de Quálitas) trae el documento extra.
+    const { id } = await callerDe(ej1).siniestros.create(alta());
+    const x = await callerDe(ej1).siniestros.get({ id });
+    expect(x.documentos.map((d) => d.nombre)).toContain("Formato de declaración (ficticio)");
+  });
+
+  it("la primera acción y los días de aviso salen de los ajustes", async () => {
+    const a = callerDe(admin);
+    await a.configuracion.guardarAjustes({ diasSinMovimiento: 15, diasCompromisoInicial: 5, accionInicial: "Llamar al asegurado (ficticio)", nombreAgencia: "THP Seguros" });
+    const c = callerDe(ej1);
+    const { id } = await c.siniestros.create(alta());
+    expect((await c.siniestros.get({ id })).proximaAccion).toBe("Llamar al asegurado (ficticio)");
+    // Lo ingresamos y lo dejamos 3 días sin movimiento: con 2 días para Quálitas ya avisa.
+    const db = getDb();
+    await db.update(s.siniestros).set({ estado: "ingresado", ultimoMovimiento: new Date(Date.now() - 3 * 86_400_000) }).where(eq(s.siniestros.id, id));
+    const sinAviso = await c.tablero.resumen();
+    expect(sinAviso.alertas.some((x) => x.siniestroId === id && x.titulo.startsWith("Sin movimiento"))).toBe(false);
+    await a.configuracion.guardarAseguradora({ id: ase["Quálitas"], nombre: "Quálitas", diasSinRespuesta: 2 });
+    const conAviso = await c.tablero.resumen();
+    expect(conAviso.alertas.some((x) => x.siniestroId === id && x.titulo.startsWith("Sin movimiento"))).toBe(true);
+  });
+
+  it("cada ejecutivo puede ver solo lo suyo en el tablero", async () => {
+    await callerDe(ej2).siniestros.create(alta({ ejecutivoId: ej2.id }));
+    const mios = await callerDe(ej2).tablero.resumen({ soloMios: true });
+    const todo = await callerDe(ej2).tablero.resumen();
+    expect(mios.kpis.registrados).toBeGreaterThan(0);
+    expect(mios.kpis.registrados).toBeLessThan(todo.kpis.registrados);
+    expect(mios.compromisos.every((r) => r.ejecutivoId === ej2.id)).toBe(true);
   });
 });
