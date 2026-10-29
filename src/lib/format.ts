@@ -1,4 +1,5 @@
 import type { Tono } from "@contracts/flujo"
+import { celdaCSV } from "@contracts/csv"
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
@@ -67,11 +68,7 @@ export const errorMsg = (e: unknown) => (e instanceof Error ? e.message : "Ocurr
 
 /** Descarga un CSV que Excel abre con acentos (UTF-8 con BOM). */
 export function descargarCSV(nombre: string, encabezados: string[], filas: (string | number | null | undefined)[][]) {
-  const celda = (v: string | number | null | undefined) => {
-    const t = v === null || v === undefined ? "" : String(v)
-    return /[",\n;]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t
-  }
-  const csv = [encabezados, ...filas].map((f) => f.map(celda).join(",")).join("\r\n")
+  const csv = [encabezados, ...filas].map((f) => f.map(celdaCSV).join(",")).join("\r\n")
   const url = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }))
   const a = document.createElement("a")
   a.href = url

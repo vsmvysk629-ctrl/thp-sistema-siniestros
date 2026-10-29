@@ -9,6 +9,7 @@ import { createRouter, publicQuery, sesionQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 import { hashPassword, passwordProblema, verifyPassword } from "./auth/password";
 import { huellaPassword, sessionCookie, signSessionToken } from "./auth/session";
+import { ipBloqueada, ipDe, limpiarFallos, registrarFallo } from "./auth/limite";
 
 const MAX_INTENTOS = 5;
 const BLOQUEO_MIN = 15;
@@ -36,9 +37,14 @@ export const authRouter = createRouter({
     .input(z.object({ username: z.string().trim().min(1).max(64), password: z.string().min(1).max(200) }))
     .mutation(async ({ ctx, input }) => {
       const db = getDb();
+      const ip = ipDe(ctx.req.headers);
+      if (ipBloqueada(ip)) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Demasiados intentos. Intenta de nuevo en unos minutos." });
+      }
       const [user] = await db.select().from(s.users).where(eq(s.users.username, input.username.toLowerCase()));
       if (!user || !user.passwordHash || !user.activo) {
         await verifyPassword(input.password, HASH_FALSO);
+        registrarFallo(ip);
         throw credencialInvalida();
       }
       if (user.bloqueadoHasta && user.bloqueadoHasta > new Date()) {
@@ -53,8 +59,10 @@ export const authRouter = createRouter({
             bloqueadoHasta: intentos >= MAX_INTENTOS ? new Date(Date.now() + BLOQUEO_MIN * 60_000) : null,
           })
           .where(eq(s.users.id, user.id));
+        registrarFallo(ip);
         throw credencialInvalida();
       }
+      limpiarFallos(ip);
       await db.update(s.users).set({ intentosFallidos: 0, bloqueadoHasta: null, ultimoAcceso: new Date() }).where(eq(s.users.id, user.id));
       const token = await signSessionToken({ uid: user.id, pv: huellaPassword(user.passwordHash) });
       ctx.resHeaders.append("set-cookie", sessionCookie(ctx.req.headers, token, Math.floor(Session.maxAgeMs / 1000)));
