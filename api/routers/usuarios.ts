@@ -52,4 +52,22 @@ export const usuariosRouter = createRouter({
       await getDb().update(s.users).set(cambios).where(eq(s.users.id, id));
       return { ok: true };
     }),
+
+  /**
+   * Nueva contraseña temporal para quien olvidó la suya. Las sesiones abiertas de ese usuario
+   * dejan de servir y al entrar se le pide cambiarla.
+   */
+  restablecer: adminQuery.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+    if (input.id === ctx.user.id) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Para tu propia contraseña usa \"Cambiar contraseña\"." });
+    }
+    const [u] = await getDb().select({ id: s.users.id }).from(s.users).where(eq(s.users.id, input.id));
+    if (!u) throw new TRPCError({ code: "NOT_FOUND", message: "Usuario no encontrado." });
+    const temporal = passwordTemporal();
+    await getDb()
+      .update(s.users)
+      .set({ passwordHash: await hashPassword(temporal), debeCambiarPassword: true, intentosFallidos: 0, bloqueadoHasta: null })
+      .where(eq(s.users.id, input.id));
+    return { passwordTemporal: temporal };
+  }),
 });

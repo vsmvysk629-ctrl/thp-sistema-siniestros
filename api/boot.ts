@@ -29,6 +29,8 @@ app.use("*", async (c, next) => {
 app.use("/api/trpc/*", async (c) =>
   fetchRequestHandler({ endpoint: "/api/trpc", req: c.req.raw, router: appRouter, createContext }),
 );
+// Para que el servidor (Railway) sepa que el sistema está arriba.
+app.get("/api/salud", (c) => c.json({ ok: true }));
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
 
 export default app;

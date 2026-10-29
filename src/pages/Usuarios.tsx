@@ -26,6 +26,7 @@ export default function Usuarios() {
   const utils = trpc.useUtils()
   const lista = trpc.usuarios.list.useQuery()
   const [nuevo, setNuevo] = useState(false)
+  const [restablecer, setRestablecer] = useState<{ id: number; nombre: string; username: string } | null>(null)
   const editar = trpc.usuarios.editar.useMutation({ onSuccess: () => utils.usuarios.invalidate() })
   return (
     <>
@@ -55,9 +56,14 @@ export default function Usuarios() {
               <td className="px-3 py-3.5 text-ink-600">{u.ultimoAcceso ? fmtFecha(u.ultimoAcceso, true) : "Nunca"}</td>
               <td className="px-3 py-3.5 text-right">
                 {u.id !== usuario.id && (
-                  <button className="text-xs text-navy-900 hover:underline" onClick={() => editar.mutate({ id: u.id, activo: !u.activo })}>
-                    {u.activo ? "Desactivar" : "Activar"}
-                  </button>
+                  <span className="inline-flex gap-3 whitespace-nowrap">
+                    <button className="text-xs text-navy-900 hover:underline" onClick={() => setRestablecer(u)}>
+                      Restablecer contraseña
+                    </button>
+                    <button className="text-xs text-navy-900 hover:underline" onClick={() => editar.mutate({ id: u.id, activo: !u.activo })}>
+                      {u.activo ? "Desactivar" : "Activar"}
+                    </button>
+                  </span>
                 )}
                 {!u.activo && <Badge className="ml-2">Inactivo</Badge>}
               </td>
@@ -78,6 +84,7 @@ export default function Usuarios() {
         </Tabla>
       </Card>
       {nuevo && <NuevoUsuario onClose={() => setNuevo(false)} />}
+      {restablecer && <RestablecerPassword usuario={restablecer} onClose={() => setRestablecer(null)} />}
     </>
   )
 }
@@ -121,6 +128,35 @@ function NuevoUsuario({ onClose }: { onClose: () => void }) {
             <Button type="submit" disabled={crear.isPending}>Crear usuario</Button>
           </div>
         </form>
+      )}
+    </Modal>
+  )
+}
+
+function RestablecerPassword({ usuario, onClose }: { usuario: { id: number; nombre: string; username: string }; onClose: () => void }) {
+  const restablecer = trpc.usuarios.restablecer.useMutation()
+  const temporal = restablecer.data?.passwordTemporal
+  return (
+    <Modal title="Restablecer contraseña" onClose={onClose}>
+      {temporal ? (
+        <div className="space-y-4">
+          <p className="rounded-[10px] bg-tone-greenBg px-3 py-3 text-sm text-tone-green">
+            Nueva contraseña temporal de <b>{usuario.username}</b>: <code className="font-mono text-base">{temporal}</code>
+            <br />Se muestra una sola vez. Al entrar, el sistema le pedirá cambiarla.
+          </p>
+          <div className="flex justify-end"><Button onClick={onClose}>Listo</Button></div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <p className="text-sm text-ink-600">
+            Se generará una contraseña temporal para <b className="text-ink-900">{usuario.nombre}</b>. Su contraseña actual dejará de funcionar y se cerrarán sus sesiones abiertas.
+          </p>
+          <ErrorBox error={restablecer.error && errorMsg(restablecer.error)} />
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={onClose}>Cancelar</Button>
+            <Button disabled={restablecer.isPending} onClick={() => restablecer.mutate({ id: usuario.id })}>Restablecer</Button>
+          </div>
+        </div>
       )}
     </Modal>
   )

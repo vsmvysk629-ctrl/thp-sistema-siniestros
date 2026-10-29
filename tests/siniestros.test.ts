@@ -311,3 +311,16 @@ describe("configuración del administrador", () => {
     expect(mios.compromisos.every((r) => r.ejecutivoId === ej2.id)).toBe(true);
   });
 });
+
+describe("restablecer contraseña", () => {
+  it("solo el administrador la restablece; la anterior deja de servir y pide cambiarla", async () => {
+    const { verifyPassword } = await import("../api/auth/password");
+    await expect(callerDe(ej1).usuarios.restablecer({ id: ej2.id })).rejects.toThrow();
+    await expect(callerDe(admin).usuarios.restablecer({ id: admin.id })).rejects.toThrow(/propia/);
+    const { passwordTemporal } = await callerDe(admin).usuarios.restablecer({ id: ej2.id });
+    const [u] = await getDb().select().from(s.users).where(eq(s.users.id, ej2.id));
+    expect(u.debeCambiarPassword).toBe(true);
+    expect(await verifyPassword(passwordTemporal, u.passwordHash)).toBe(true);
+    expect(await verifyPassword("Prueba12345", u.passwordHash)).toBe(false);
+  });
+});
