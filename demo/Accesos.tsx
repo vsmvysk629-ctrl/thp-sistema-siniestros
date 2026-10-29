@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { leerSesion, reiniciarDemo } from "./db"
+import { useEffect, useState } from "react"
+import { alCambiarSesion, leerSesion, reiniciarDemo } from "./db"
 
 const USUARIOS = [
   ["admin", "Administrador"],
@@ -25,6 +25,8 @@ function entrar(usuario: string) {
 /** Aviso fijo de la demo con los usuarios de prueba. */
 export function Accesos() {
   const [abierto, setAbierto] = useState(!leerSesion())
+  // Al entrar al sistema la tarjeta se recoge para no tapar la pantalla; al salir se vuelve a abrir.
+  useEffect(() => alCambiarSesion(() => setAbierto(!leerSesion())), [])
   return (
     <div className="no-print fixed bottom-3 right-3 z-40 w-[260px] rounded-card border border-line bg-surface/95 text-[12px] text-ink-600 shadow-flota backdrop-blur">
       <div className="flex items-center justify-between gap-2 py-1.5 pl-3 pr-1.5">

@@ -12,7 +12,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx db/seed.ts",
-    "demo:build": "vite build -c vite.demo.config.ts && node scripts/demo-un-archivo.mjs"
+    "demo:build": "vite build -c vite.demo.config.ts && node scripts/demo-un-archivo.mjs",
+    "e2e": "node scripts/e2e.cjs"
   },
   "dependencies": {
     "@hono/node-server": "^1.14.3",

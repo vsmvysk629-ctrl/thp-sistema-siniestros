@@ -25,10 +25,17 @@ function guardarDb() {
   }, 300)
 }
 
+const oyentes = new Set<() => void>()
 export const leerSesion = () => sesion
 export function guardarSesion(c: string) {
   sesion = c
   escribir(CLAVE_SESION, c || null)
+  oyentes.forEach((f) => f())
+}
+/** Avisa cuando alguien entra o sale. */
+export function alCambiarSesion(f: () => void) {
+  oyentes.add(f)
+  return () => void oyentes.delete(f)
 }
 
 export async function iniciarDemo() {

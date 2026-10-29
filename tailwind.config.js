@@ -7,7 +7,7 @@ export default {
         canvas: "#F7F8FA",
         surface: "#FFFFFF",
         subtle: "#F3F4F6",
-        ink: { 900: "#0B0F17", 600: "#5B6270", 400: "#9AA1AD" },
+        ink: { 900: "#0B0F17", 600: "#5B6270", 400: "#666D7A" },
         line: { DEFAULT: "#E8EAEE", strong: "#D5D9DF", soft: "#F0F1F4" },
         // Primario: tinta casi negra. Acento: azul del logo THP.
         navy: { 900: "#0B0F17", 800: "#1F2530", 600: "#2B74AE", 200: "#C9D4E3" },
