@@ -59,7 +59,8 @@ export const TRANSICIONES: Record<Estado, Estado[]> = {
   en_revision: ["info_adicional", "autorizado", "rechazado"],
   info_adicional: ["en_revision", "autorizado", "rechazado"],
   autorizado: ["cerrado"],
-  pago_parcial: [],
+  // Si la aseguradora ya no pagará el resto, se cierra con el motivo.
+  pago_parcial: ["cerrado"],
   pagado: ["cerrado"],
   // Apelación: vuelve a revisión.
   rechazado: ["en_revision", "cerrado"],

@@ -68,3 +68,11 @@ describe("flujo del trámite", () => {
     expect(documentosPara("autos", "Robo total")).toContain("Baja de placas");
   });
 });
+
+describe("cierre con pago parcial", () => {
+  it("se puede cerrar con motivo si la aseguradora ya no pagará el resto", () => {
+    const s = { estado: "pago_parcial" as const, numeroSiniestro: "X", documentosFaltantes: 0 };
+    expect(validarTransicion(s, "cerrado", {})).toMatch(/motivo/);
+    expect(validarTransicion(s, "cerrado", { nota: "La aseguradora cerró con lo pagado." })).toBeNull();
+  });
+});
