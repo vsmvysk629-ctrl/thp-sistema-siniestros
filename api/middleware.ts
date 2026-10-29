@@ -5,6 +5,8 @@ import type { TrpcContext } from "./context";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
+  // La demo corre el mismo router dentro del navegador (ver demo/).
+  allowOutsideOfServer: true,
 });
 
 export const createRouter = t.router;
