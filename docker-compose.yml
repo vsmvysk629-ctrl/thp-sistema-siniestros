@@ -1,0 +1,72 @@
+# Instalación en la mini PC de la oficina. Guía: docs/instalacion-mini-pc.md
+# Uso: copiar .env.mini-pc.example a .env, llenarlo y correr `docker compose up -d --build`.
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: siniestros
+      MYSQL_USER: thp
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Falta DB_ROOT_PASSWORD en .env}
+      TZ: America/Mexico_City
+    volumes:
+      - db-datos:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uthp -p$$MYSQL_PASSWORD --silent"]
+      interval: 10s
+      retries: 12
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mysql://thp:${DB_PASSWORD}@db:3306/siniestros
+      APP_SECRET: ${APP_SECRET:?Falta APP_SECRET en .env}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_NAME: ${ADMIN_NAME:-Administrador THP}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      TZ: America/Mexico_City
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/salud').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      retries: 3
+
+  # Respaldo diario de la base (incluye los archivos subidos) en la carpeta ./respaldos.
+  # Guarda los últimos 30 días. Copia esa carpeta a una USB o a la nube de vez en cuando.
+  respaldo:
+    image: mysql:8.4
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      MYSQL_PWD: ${DB_PASSWORD}
+      TZ: America/Mexico_City
+    volumes:
+      - ./respaldos:/respaldos
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -o pipefail
+        # Espera a que la app cree las tablas la primera vez; luego, uno al día.
+        sleep 300
+        while true; do
+          f=/respaldos/siniestros-$$(date +%F).sql.gz
+          if mysqldump -h db -u thp --single-transaction --no-tablespaces siniestros | gzip > "$$f.tmp"; then
+            mv "$$f.tmp" "$$f" && echo "Respaldo listo: $$f"
+          else
+            rm -f "$$f.tmp"; echo "ERROR: no se pudo hacer el respaldo"
+          fi
+          find /respaldos -name 'siniestros-*.sql.gz' -mtime +30 -delete
+          sleep 86400
+        done
+
+volumes:
+  db-datos:
