@@ -324,3 +324,13 @@ describe("restablecer contraseña", () => {
     expect(await verifyPassword("Prueba12345", u.passwordHash)).toBe(false);
   });
 });
+
+describe("catálogo de aseguradoras", () => {
+  it("las compañías disponibles se cargan inactivas y no salen en los formularios", async () => {
+    const nombres = (await callerDe(ej1).catalogos.aseguradoras()).map((a) => a.nombre);
+    expect(nombres).toEqual(expect.arrayContaining(["Quálitas", "Atlas", "Potosí"]));
+    expect(nombres).not.toContain("GNP");
+    const [gnp] = await getDb().select().from(s.aseguradoras).where(eq(s.aseguradoras.nombre, "GNP"));
+    expect(gnp.activa).toBe(false);
+  });
+});

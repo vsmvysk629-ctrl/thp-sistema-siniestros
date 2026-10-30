@@ -120,9 +120,26 @@ export async function asegurarAdministrador(datos: { username: string; password:
 /** Aseguradoras con las que trabaja la oficina. Se crean al arrancar si faltan. */
 export const ASEGURADORAS = ["Quálitas", "Atlas", "Potosí"];
 
+/**
+ * Otras compañías que operan en México, cargadas inactivas para activarlas en Configuración
+ * el día que la oficina trabaje con ellas. Nombres comerciales; no es el padrón oficial de la CNSF.
+ */
+export const ASEGURADORAS_DISPONIBLES = [
+  "AIG", "ANA Seguros", "AXA", "Afirme", "Agroasemex", "Allianz", "Assurant", "BBVA Seguros", "Banorte",
+  "Bupa", "BX+ Seguros", "Cardif", "Chubb", "Crabi", "El Águila", "General de Seguros", "GMX Seguros", "GNP",
+  "HDI", "Inbursa", "Insignia Life", "La Latinoamericana", "Mapfre", "MetLife", "Mitsui Sumitomo",
+  "Monterrey New York Life", "Pan-American México", "Plan Seguro", "Primero Seguros", "Prudential",
+  "Seguros Argos", "Seguros Azteca", "Sisnova", "Skandia", "Sompo", "Sura", "Thona", "Tokio Marine",
+  "Zurich", "Zurich Santander",
+];
+
 export async function asegurarAseguradoras() {
   const db = getDb();
   for (const nombre of ASEGURADORAS) {
     await db.insert(s.aseguradoras).values({ nombre }).onDuplicateKeyUpdate({ set: { nombre } });
+  }
+  // Solo se crean si faltan: si la oficina ya activó o editó alguna, se respeta.
+  for (const nombre of ASEGURADORAS_DISPONIBLES) {
+    await db.insert(s.aseguradoras).values({ nombre, activa: false }).onDuplicateKeyUpdate({ set: { nombre } });
   }
 }

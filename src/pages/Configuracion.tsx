@@ -222,10 +222,13 @@ type Aseg = Cfg["aseguradoras"][number]
 
 function Aseguradoras({ cfg }: { cfg: Cfg }) {
   const [editar, setEditar] = useState<Aseg | "nueva" | null>(null)
+  const [verInactivas, setVerInactivas] = useState(false)
+  const inactivas = cfg.aseguradoras.filter((a) => !a.activa).length
+  const visibles = cfg.aseguradoras.filter((a) => a.activa || verInactivas)
   return (
     <Card title="Aseguradoras" actions={<Button variant="secondary" onClick={() => setEditar("nueva")}><Plus size={14} /> Aseguradora</Button>}>
       <Tabla cols={["Compañía", "Teléfono de cabina", "Aviso sin respuesta", "Notas", "Estado", ""]}>
-        {cfg.aseguradoras.map((a) => (
+        {visibles.map((a) => (
           <tr key={a.id}>
             <td className="px-3 py-3.5 font-medium">{a.nombre}</td>
             <td className="px-3 py-3.5 font-mono text-[12.5px]">{a.telefonoCabina ?? <span className="text-ink-400">—</span>}</td>
@@ -236,6 +239,11 @@ function Aseguradoras({ cfg }: { cfg: Cfg }) {
           </tr>
         ))}
       </Tabla>
+      {inactivas > 0 && (
+        <button className="mt-2 px-3 py-2 text-[12.5px] text-navy-900 hover:underline" onClick={() => setVerInactivas((v) => !v)}>
+          {verInactivas ? "Ocultar inactivas" : `Ver ${inactivas} compañías inactivas para activar`}
+        </button>
+      )}
       {editar && <AseguradoraModal a={editar === "nueva" ? null : editar} onClose={() => setEditar(null)} />}
     </Card>
   )
