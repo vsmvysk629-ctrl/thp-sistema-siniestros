@@ -27,3 +27,4 @@ respaldos/
 .env
 .env.*
 !.env.example
+dist-demo
