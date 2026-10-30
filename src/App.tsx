@@ -219,7 +219,7 @@ function Pantalla({ titulo, sub, children }: { titulo: string; sub: string; chil
         <div className="absolute -right-32 -top-32 h-[520px] w-[520px] rounded-full bg-thp opacity-40 blur-[120px]" />
         <div className="absolute -bottom-40 left-10 h-[420px] w-[420px] rounded-full bg-[#9A9A9A] opacity-10 blur-[120px]" />
         <div className="relative flex h-full flex-col justify-end p-14 text-white">
-          <img src="/logo-thp-simbolo.png" alt="" className="mb-10 h-16 w-auto self-start opacity-90 brightness-[1.6] grayscale" />
+          <img src="/segurito.png" alt="Segurito, la mascota de THP" className="mb-10 h-44 w-auto self-start drop-shadow-[0_12px_24px_rgba(0,0,0,0.35)]" />
           <p className="max-w-md font-display text-[34px] font-light leading-tight tracking-tight">Cada siniestro, de principio a fin, en un solo lugar.</p>
           <p className="mt-4 font-display text-[13px] font-light italic text-white/50">“Asesorar para decidir”</p>
         </div>

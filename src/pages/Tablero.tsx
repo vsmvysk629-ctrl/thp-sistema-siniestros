@@ -32,7 +32,12 @@ export default function Tablero() {
     <>
       <PageHeader
         arriba={fechaLarga()}
-        titulo={`${saludo()}, ${corto(usuario.nombre)}`}
+        titulo={
+          <span className="flex items-center gap-3">
+            <img src="/segurito.png" alt="" className="-my-2 h-12 w-auto" />
+            {`${saludo()}, ${corto(usuario.nombre)}`}
+          </span>
+        }
         acciones={
           <>
             {esEditor(usuario) && <Segmento<Vista> valor={vista} onChange={setVista} opciones={[{ id: "mios", label: "Míos" }, { id: "todos", label: "Todo el despacho" }]} />}
@@ -56,7 +61,12 @@ export default function Tablero() {
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[1.6fr_1fr]">
         <Card title="Alertas y pendientes" actions={alertas.length > 0 && <Badge tono="red">{alertas.length} requieren atención</Badge>}>
-          {alertas.length === 0 && <p className="py-6 text-center text-sm text-ink-400">Sin pendientes. Todo al día.</p>}
+          {alertas.length === 0 && (
+            <div className="flex flex-col items-center py-6 text-center">
+              <img src="/segurito.png" alt="" className="mb-3 h-24 w-auto" />
+              <p className="text-sm text-ink-600">Sin pendientes. Todo al día.</p>
+            </div>
+          )}
           <ul className="divide-y divide-line-soft border-t border-line-soft">
             {alertas.map((a, i) => (
               <li key={i}>

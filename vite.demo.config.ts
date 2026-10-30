@@ -32,7 +32,7 @@ function demo(): Plugin {
     transform(code, id) {
       if (!/\.(tsx|html)$/.test(id)) return
       // Logos y favicon dentro del mismo archivo.
-      return code.replace(/(["'])(?:\.)?\/((?:logo-thp[\w-]*|favicon)\.png)\1/g, (_m, q, f) => `${q}data:image/png;base64,${fs.readFileSync(r(`public/${f}`)).toString("base64")}${q}`)
+      return code.replace(/(["'])(?:\.)?\/((?:logo-thp[\w-]*|favicon|segurito)\.png)\1/g, (_m, q, f) => `${q}data:image/png;base64,${fs.readFileSync(r(`public/${f}`)).toString("base64")}${q}`)
     },
     transformIndexHtml(html) {
       return html.replace(/href="\.\/favicon\.png"/, `href="data:image/png;base64,${fs.readFileSync(r("public/favicon.png")).toString("base64")}"`)
