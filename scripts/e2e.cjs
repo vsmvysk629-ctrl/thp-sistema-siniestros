@@ -46,6 +46,13 @@ server.listen(0, async () => {
     revisar(/Faltan/.test(await estatus(p, "Documentación completa")), "No deja marcar documentación completa con documentos pendientes")
     await p.click('button:has-text("Documentación")')
     await p.waitForTimeout(300)
+    const pdf = { name: "Denuncia-ficticia.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 demo") }
+    await p.locator("li input[type=file]").first().setInputFiles(pdf)
+    await p.waitForSelector("text=Denuncia-ficticia.pdf")
+    revisar((await p.locator("li select").first().inputValue()) === "recibido", "Sube el archivo de un documento y queda recibido")
+    await p.locator("input[type=file]").last().setInputFiles({ ...pdf, name: "Formato-reclamacion.pdf" })
+    await p.waitForSelector("text=Formato-reclamacion.pdf")
+    revisar(true, "Sube un formato suelto al expediente")
     const sels = p.locator("li select")
     for (let i = 0, n = await sels.count(); i < n; i++) { await sels.nth(i).selectOption("validado"); await p.waitForTimeout(200) }
     revisar(!(await estatus(p, "Documentación completa")), "Con todo validado pasa a documentación completa")

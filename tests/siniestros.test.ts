@@ -334,3 +334,39 @@ describe("catálogo de aseguradoras", () => {
     expect(gnp.activa).toBe(false);
   });
 });
+
+describe("archivos del expediente", () => {
+  const pdf = Buffer.from("%PDF-1.4 archivo ficticio").toString("base64");
+
+  it("sube un archivo ligado a un documento, lo marca recibido y solo el responsable puede subir o quitar", async () => {
+    const { id } = await callerDe(ej1).siniestros.create(alta());
+    const exp = await callerDe(ej1).siniestros.get({ id });
+    const doc = exp.documentos[0];
+    expect(doc.estado).toBe("pendiente");
+
+    await expect(callerDe(ej2).expediente.subirArchivo({ siniestroId: id, documentoId: doc.id, nombre: "a.pdf", tipo: "application/pdf", base64: pdf })).rejects.toThrow();
+    await expect(callerDe(ej1).expediente.subirArchivo({ siniestroId: id, nombre: "x.exe", tipo: "application/x-msdownload", base64: pdf })).rejects.toThrow(/Formato/);
+
+    const subido = await callerDe(ej1).expediente.subirArchivo({ siniestroId: id, documentoId: doc.id, nombre: "Denuncia.pdf", tipo: "application/pdf", base64: pdf });
+    const despues = await callerDe(consulta).siniestros.get({ id });
+    expect(despues.documentos.find((d) => d.id === doc.id)?.estado).toBe("recibido");
+    expect(despues.archivos).toHaveLength(1);
+    expect(despues.archivos[0]).not.toHaveProperty("contenido");
+    expect(despues.archivos[0].tamano).toBe(Buffer.from(pdf, "base64").length);
+
+    // Consulta puede abrirlo, no quitarlo.
+    expect((await callerDe(consulta).expediente.archivo({ id: subido.id })).base64).toBe(pdf);
+    await expect(callerDe(consulta).expediente.borrarArchivo({ id: subido.id })).rejects.toThrow();
+    await callerDe(ej1).expediente.borrarArchivo({ id: subido.id });
+    expect((await callerDe(ej1).siniestros.get({ id })).archivos).toHaveLength(0);
+  });
+
+  it("rechaza archivos de más de 10 MB y documentos de otro siniestro", async () => {
+    const a = await callerDe(ej1).siniestros.create(alta());
+    const b = await callerDe(ej1).siniestros.create(alta());
+    const docB = (await callerDe(ej1).siniestros.get({ id: b.id })).documentos[0];
+    const grande = Buffer.alloc(10 * 1024 * 1024 + 1).toString("base64");
+    await expect(callerDe(ej1).expediente.subirArchivo({ siniestroId: a.id, nombre: "g.pdf", tipo: "application/pdf", base64: grande })).rejects.toThrow(/10 MB/);
+    await expect(callerDe(ej1).expediente.subirArchivo({ siniestroId: a.id, documentoId: docB.id, nombre: "a.pdf", tipo: "application/pdf", base64: pdf })).rejects.toThrow(/no encontrado/);
+  });
+});

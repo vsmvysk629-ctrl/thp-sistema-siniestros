@@ -10,7 +10,8 @@ import { asegurarCatalogos } from "./queries/configuracion";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 
-app.use(bodyLimit({ maxSize: 10 * 1024 * 1024 }));
+// Archivos de hasta ARCHIVO_MAX_MB (10 MB) viajan en base64: ~13.4 MB más el resto del JSON.
+app.use(bodyLimit({ maxSize: 16 * 1024 * 1024 }));
 // Cabeceras básicas de seguridad
 app.use("*", async (c, next) => {
   await next();

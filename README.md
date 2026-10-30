@@ -34,9 +34,10 @@ npm test     # usa TEST_DATABASE_URL o mysql://sin:sin@localhost:3306/siniestros
 Las pruebas borran y recrean la base, así que solo corren contra una base cuyo nombre termina en `_test`. Se usan solo datos ficticios.
 
 ## Producción
-`npm run build && npm start` (o el `Dockerfile`). Al arrancar aplica migraciones, crea Quálitas, Atlas y Potosí si faltan y crea el primer administrador con `ADMIN_USERNAME`/`ADMIN_PASSWORD` (deberá cambiar la contraseña al entrar). Variables en `.env.example`.
+`npm run build && npm start` (o el `Dockerfile`). Al arrancar aplica migraciones, crea Quálitas, Atlas y Potosí si faltan (y las demás aseguradoras de México como inactivas) y crea el primer administrador con `ADMIN_USERNAME`/`ADMIN_PASSWORD` (deberá cambiar la contraseña al entrar). Variables en `.env.example`.
+
+Los archivos del expediente (PDF, fotos, Word, Excel; hasta 10 MB) se guardan en MySQL, así que el respaldo de la base los incluye.
 
 ## Siguientes etapas
-- 1B Expediente: subir y descargar archivos de cada documento.
 - 1C Seguimiento: proceso diario que genera tareas y borradores por aprobar (nada se envía al cliente).
 - Ajustes que pida la oficina al usar esta versión.

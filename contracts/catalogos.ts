@@ -99,3 +99,18 @@ export const RESPONSABILIDAD_LABEL: Record<Responsabilidad, string> = {
   tercero: "Del tercero",
   compartida: "Compartida",
 };
+
+/** Archivos del expediente: tamaño máximo y formatos aceptados. */
+export const ARCHIVO_MAX_MB = 10;
+export const ARCHIVO_TIPOS: Record<string, string> = {
+  "application/pdf": "PDF",
+  "image/jpeg": "Foto",
+  "image/png": "Imagen",
+  "image/webp": "Imagen",
+  "image/heic": "Foto",
+  "application/msword": "Word",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "Word",
+  "application/vnd.ms-excel": "Excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "Excel",
+};
+export const ARCHIVO_ACEPTA = ".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx,.xls,.xlsx";

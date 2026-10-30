@@ -2,11 +2,11 @@ import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import * as s from "@db/schema";
-import { DICTAMENES, DOC_ESTADOS, DOC_LABEL } from "@contracts/catalogos";
+import { ARCHIVO_MAX_MB, ARCHIVO_TIPOS, DICTAMENES, DOC_ESTADOS, DOC_LABEL } from "@contracts/catalogos";
 import { ESTADOS_PAGO, ESTADO_LABEL, estadoTrasPago } from "@contracts/flujo";
-import { createRouter, editorQuery } from "../middleware";
+import { authedQuery, createRouter, editorQuery } from "../middleware";
 import { getDb } from "../queries/connection";
-import { assertEditable } from "../auth/alcance";
+import { assertEditable, assertSiniestro } from "../auth/alcance";
 import { hoyISO, recalcularConceptos, registrarEvento, totalPagado } from "../queries/siniestros";
 import { monto } from "./siniestros";
 
@@ -54,6 +54,73 @@ export const expedienteRouter = createRouter({
         return { id };
       });
     }),
+
+  subirArchivo: editorQuery
+    .input(
+      z.object({
+        siniestroId: z.number(),
+        documentoId: z.number().nullish(),
+        nombre: z.string().trim().min(1).max(255),
+        tipo: z.string().max(128),
+        base64: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertEditable(ctx.user, input.siniestroId);
+      if (!ARCHIVO_TIPOS[input.tipo]) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Formato no aceptado. Sube PDF, foto, Word o Excel." });
+      }
+      if (!/^[A-Za-z0-9+/]+=*$/.test(input.base64)) throw new TRPCError({ code: "BAD_REQUEST", message: "Archivo dañado." });
+      const tamano = Math.floor((input.base64.length * 3) / 4) - (input.base64.match(/=+$/)?.[0].length ?? 0);
+      if (tamano > ARCHIVO_MAX_MB * 1024 * 1024) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `El archivo pesa más de ${ARCHIVO_MAX_MB} MB.` });
+      }
+      return getDb().transaction(async (tx) => {
+        let doc: s.Documento | undefined;
+        if (input.documentoId) {
+          [doc] = await tx.select().from(s.documentos).where(eq(s.documentos.id, input.documentoId));
+          if (!doc || doc.siniestroId !== input.siniestroId) throw new TRPCError({ code: "NOT_FOUND", message: "Documento no encontrado." });
+        }
+        const [{ id }] = await tx
+          .insert(s.archivos)
+          .values({ siniestroId: input.siniestroId, documentoId: doc?.id ?? null, nombre: input.nombre, tipo: input.tipo, tamano, contenido: input.base64, subidoPorId: ctx.user.id })
+          .$returningId();
+        // Subir el archivo de un documento que faltaba lo marca como recibido; validarlo sigue siendo a mano.
+        const recibido = doc && (doc.estado === "pendiente" || doc.estado === "correccion");
+        if (doc && recibido) {
+          await tx.update(s.documentos).set({ estado: "recibido", actualizadoPorId: ctx.user.id }).where(eq(s.documentos.id, doc.id));
+        }
+        await registrarEvento(tx, {
+          siniestroId: input.siniestroId,
+          tipo: "documento",
+          nota: doc ? `${doc.nombre}: se subió el archivo ${input.nombre}${recibido ? " (queda como recibido)" : ""}.` : `Se subió el archivo ${input.nombre}.`,
+          autorId: ctx.user.id,
+        });
+        return { id };
+      });
+    }),
+
+  /** Contenido de un archivo, para verlo o descargarlo. Lo puede ver quien ve el siniestro. */
+  archivo: authedQuery.input(z.object({ id: z.number() })).query(async ({ input }) => {
+    const [a] = await getDb().select().from(s.archivos).where(eq(s.archivos.id, input.id));
+    if (!a) throw new TRPCError({ code: "NOT_FOUND", message: "Archivo no encontrado." });
+    await assertSiniestro(a.siniestroId);
+    return { nombre: a.nombre, tipo: a.tipo, base64: a.contenido };
+  }),
+
+  borrarArchivo: editorQuery.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+    const [a] = await getDb()
+      .select({ id: s.archivos.id, siniestroId: s.archivos.siniestroId, nombre: s.archivos.nombre })
+      .from(s.archivos)
+      .where(eq(s.archivos.id, input.id));
+    if (!a) throw new TRPCError({ code: "NOT_FOUND", message: "Archivo no encontrado." });
+    await assertEditable(ctx.user, a.siniestroId);
+    await getDb().transaction(async (tx) => {
+      await tx.delete(s.archivos).where(eq(s.archivos.id, a.id));
+      await registrarEvento(tx, { siniestroId: a.siniestroId, tipo: "documento", nota: `Se quitó el archivo ${a.nombre}.`, autorId: ctx.user.id });
+    });
+    return { ok: true };
+  }),
 
   guardarConcepto: editorQuery
     .input(

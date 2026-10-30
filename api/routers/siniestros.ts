@@ -141,12 +141,20 @@ export const siniestrosRouter = createRouter({
     const sin = await assertSiniestro(input.id);
     const db = getDb();
     const autor = alias(s.users, "autor");
-    const [contratante, poliza, aseguradora, ejecutivoRow, docs, concs, pags, evts, ters, otros] = await Promise.all([
+    const autorArch = alias(s.users, "autor_arch");
+    const [contratante, poliza, aseguradora, ejecutivoRow, docs, archs, concs, pags, evts, ters, otros] = await Promise.all([
       db.select().from(s.contratantes).where(eq(s.contratantes.id, sin.contratanteId)).then((r) => r[0]),
       sin.polizaId ? db.select().from(s.polizas).where(eq(s.polizas.id, sin.polizaId)).then((r) => r[0] ?? null) : null,
       db.select().from(s.aseguradoras).where(eq(s.aseguradoras.id, sin.aseguradoraId)).then((r) => r[0]),
       db.select({ id: s.users.id, nombre: s.users.nombre }).from(s.users).where(eq(s.users.id, sin.ejecutivoId)).then((r) => r[0] ?? null),
       db.select().from(s.documentos).where(eq(s.documentos.siniestroId, sin.id)).orderBy(asc(s.documentos.orden), asc(s.documentos.id)),
+      // Sin el contenido: solo la lista. El archivo se pide aparte al abrirlo.
+      db
+        .select({ id: s.archivos.id, documentoId: s.archivos.documentoId, nombre: s.archivos.nombre, tipo: s.archivos.tipo, tamano: s.archivos.tamano, createdAt: s.archivos.createdAt, subidoPor: autorArch.nombre })
+        .from(s.archivos)
+        .leftJoin(autorArch, eq(autorArch.id, s.archivos.subidoPorId))
+        .where(eq(s.archivos.siniestroId, sin.id))
+        .orderBy(asc(s.archivos.id)),
       db.select().from(s.conceptos).where(eq(s.conceptos.siniestroId, sin.id)).orderBy(asc(s.conceptos.id)),
       db.select().from(s.pagos).where(eq(s.pagos.siniestroId, sin.id)).orderBy(asc(s.pagos.fecha), asc(s.pagos.id)),
       db
@@ -170,6 +178,7 @@ export const siniestrosRouter = createRouter({
       aseguradora: aseguradora!,
       ejecutivo: ejecutivoRow,
       documentos: docs,
+      archivos: archs,
       conceptos: concs,
       pagos: pags,
       pagado: pags.reduce((a, p) => a + Number(p.monto), 0),

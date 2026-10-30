@@ -5,6 +5,7 @@ import {
   decimal,
   index,
   int,
+  longtext,
   mysqlEnum,
   mysqlTable,
   text,
@@ -171,6 +172,27 @@ export const documentos = mysqlTable(
   (t) => [index("doc_sin_idx").on(t.siniestroId)],
 );
 export type Documento = typeof documentos.$inferSelect;
+
+/**
+ * Archivos del expediente (PDF, fotos, formatos). Se guardan en la base, en base64, para que
+ * el respaldo de MySQL los incluya. Pueden ir ligados a un documento del checklist o sueltos.
+ */
+export const archivos = mysqlTable(
+  "siniestro_archivos",
+  {
+    id: id(),
+    siniestroId: refReq("siniestroId"),
+    documentoId: ref("documentoId"),
+    nombre: varchar("nombre", { length: 255 }).notNull(),
+    tipo: varchar("tipo", { length: 128 }).notNull(),
+    tamano: int("tamano").notNull(),
+    contenido: longtext("contenido").notNull(),
+    subidoPorId: refReq("subidoPorId"),
+    createdAt: creado(),
+  },
+  (t) => [index("arch_sin_idx").on(t.siniestroId)],
+);
+export type Archivo = typeof archivos.$inferSelect;
 
 /** Facturas y conceptos reclamados, con el dictamen de la aseguradora. */
 export const conceptos = mysqlTable(
