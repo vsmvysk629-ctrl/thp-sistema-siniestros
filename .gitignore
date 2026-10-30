@@ -27,4 +27,5 @@ respaldos/
 .env
 .env.*
 !.env.example
+!.env.mini-pc.example
 dist-demo
