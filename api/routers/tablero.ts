@@ -31,7 +31,7 @@ function tiempoResolucion(rows: FilaSiniestro[], pagos: Map<number, string>) {
 }
 
 /** Días sin respuesta por aseguradora; las que no tienen el suyo usan el ajuste general. */
-async function limitesSinRespuesta() {
+export async function limitesSinRespuesta() {
   const db = getDb();
   const [ajustes, ases] = await Promise.all([leerAjustes(db), db.select({ id: s.aseguradoras.id, dias: s.aseguradoras.diasSinRespuesta }).from(s.aseguradoras)]);
   const porId = new Map(ases.map((a) => [a.id, a.dias]));

@@ -16,6 +16,7 @@ import {
 import { ROLES } from "../contracts/constants";
 import { DICTAMENES, DOC_ESTADOS, RAMOS, RESPONSABILIDADES } from "../contracts/catalogos";
 import { ESTADOS } from "../contracts/flujo";
+import { BORRADOR_ESTADOS, DESTINOS, MOTIVOS } from "../contracts/borradores";
 
 const id = () => bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey();
 const ref = (name: string) => bigint(name, { mode: "number", unsigned: true });
@@ -305,3 +306,26 @@ export const ajustes = mysqlTable("ajustes", {
   clave: varchar("clave", { length: 64 }).primaryKey(),
   valor: varchar("valor", { length: 500 }).notNull(),
 });
+
+// ---------------------------------------------------------------------------
+// Seguimiento (1C)
+// ---------------------------------------------------------------------------
+/** Mensajes propuestos por el sistema. Un administrador los aprueba; se envían fuera del sistema. */
+export const borradores = mysqlTable(
+  "borradores",
+  {
+    id: id(),
+    siniestroId: refReq("siniestroId"),
+    motivo: mysqlEnum("motivo", MOTIVOS).notNull(),
+    para: mysqlEnum("para", DESTINOS).notNull(),
+    texto: text("texto").notNull(),
+    estado: mysqlEnum("estado", BORRADOR_ESTADOS).default("pendiente").notNull(),
+    revisadoPorId: ref("revisadoPorId"),
+    revisadoAt: timestamp("revisadoAt"),
+    enviadoPorId: ref("enviadoPorId"),
+    enviadoAt: timestamp("enviadoAt"),
+    createdAt: creado(),
+  },
+  (t) => [index("bor_sin_idx").on(t.siniestroId), index("bor_estado_idx").on(t.estado)],
+);
+export type Borrador = typeof borradores.$inferSelect;

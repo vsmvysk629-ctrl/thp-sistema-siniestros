@@ -22,6 +22,13 @@
       "when": 1793375754226,
       "tag": "0002_archivos",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1793377554998,
+      "tag": "0003_seguimiento",
+      "breakpoints": true
     }
   ]
 }

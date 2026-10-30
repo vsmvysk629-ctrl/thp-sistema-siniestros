@@ -74,11 +74,20 @@ server.listen(0, async () => {
     await p.waitForSelector("text=Avance del trámite")
     revisar((await p.locator('button:has-text("Cambiar estatus")').count()) === 0, "Laura no puede mover un siniestro de Óscar")
 
+    const a = await entrar("admin")
+    await a.goto(U + "/seguimiento")
+    await a.waitForSelector("text=Por aprobar")
+    const antes = await a.locator('button:has-text("Aprobar")').count()
+    await a.locator('button:has-text("Aprobar")').first().click()
+    await a.waitForSelector('button:has-text("Ya lo envié")')
+    revisar(antes > 0 && (await a.locator('button:has-text("Aprobar")').count()) === antes - 1, "El administrador aprueba un mensaje propuesto")
+
     const c = await entrar("consulta")
     revisar((await c.locator('button:has-text("Nuevo siniestro")').count()) === 0, "Consulta no puede crear siniestros")
     await c.goto(U + "/siniestros/6")
     await c.waitForSelector("text=Avance del trámite")
     revisar((await c.locator('button:has-text("Cambiar estatus")').count()) === 0, "Consulta no puede cambiar estatus")
+    revisar((await c.locator('aside a:has-text("Seguimiento")').count()) === 0, "Consulta no ve los mensajes de seguimiento")
   } catch (e) {
     fallas.push(String(e))
     console.error(e)

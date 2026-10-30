@@ -55,6 +55,12 @@ if (process.env.VITEST === undefined) {
 }
 
 if (env.isProduction) {
+  // Seguimiento diario: cada hora revisa si hay mensajes que proponer (no repite los que ya existen).
+  const { generarBorradores } = await import("./routers/seguimiento");
+  const revisar = () => generarBorradores().catch((e) => console.error("[seguimiento] No se pudieron generar los mensajes", e));
+  void revisar();
+  setInterval(revisar, 60 * 60 * 1000);
+
   const { serve } = await import("@hono/node-server");
   const { serveStaticFiles } = await import("./lib/vite");
   serveStaticFiles(app);

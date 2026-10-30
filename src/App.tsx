@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react"
 import { Navigate, NavLink, Route, Routes, useNavigate } from "react-router"
-import { Bell, ChartNoAxesColumn, FileText, LayoutGrid, LogOut, Plus, Search, Settings2, ShieldCheck, Users } from "lucide-react"
+import { Bell, ChartNoAxesColumn, MessageSquareText, FileText, LayoutGrid, LogOut, Plus, Search, Settings2, ShieldCheck, Users } from "lucide-react"
 import clsx from "clsx"
 import { ROL_LABEL } from "@contracts/constants"
 import { trpc } from "@/providers/trpc"
@@ -16,6 +16,7 @@ import Contratante from "@/pages/Contratante"
 import Reportes from "@/pages/Reportes"
 import Usuarios from "@/pages/Usuarios"
 import Configuracion from "@/pages/Configuracion"
+import Seguimiento from "@/pages/Seguimiento"
 
 const ICONO = { size: 17, strokeWidth: 1.6 }
 
@@ -59,6 +60,7 @@ function ConSesion({ u, nuevo, setNuevo }: { u: Usuario; nuevo: { contratanteId?
               <Route path="/contratantes" element={<Contratantes />} />
               <Route path="/contratantes/:id" element={<Contratante />} />
               <Route path="/reportes" element={<Reportes />} />
+              {esEditor(u) && <Route path="/seguimiento" element={<Seguimiento />} />}
               {u.role === "admin" && <Route path="/usuarios" element={<Usuarios />} />}
               {u.role === "admin" && <Route path="/configuracion" element={<Configuracion />} />}
               <Route path="*" element={<Navigate to="/" replace />} />
@@ -92,6 +94,7 @@ function EncabezadoImpresion() {
 function Sidebar() {
   const { usuario: u, nuevoSiniestro, vista } = useSesion()
   const t = trpc.tablero.resumen.useQuery({ soloMios: vista === "mios" })
+  const seg = trpc.seguimiento.conteo.useQuery(undefined, { enabled: esEditor(u) })
   const utils = trpc.useUtils()
   const logout = trpc.auth.logout.useMutation({ onSuccess: () => utils.invalidate() })
   return (
@@ -111,6 +114,7 @@ function Sidebar() {
       <nav className="flex gap-0.5 overflow-x-auto px-3 pb-3 lg:flex-col">
         <Item to="/" icon={<LayoutGrid {...ICONO} />} n={t.data?.alertas.length}>Tablero</Item>
         <Item to="/siniestros" icon={<FileText {...ICONO} />} n={t.data?.kpis.abiertos}>Siniestros</Item>
+        {esEditor(u) && <Item to="/seguimiento" icon={<MessageSquareText {...ICONO} />} n={seg.data || undefined}>Seguimiento</Item>}
         <Item to="/contratantes" icon={<Users {...ICONO} />}>Contratantes</Item>
         <Item to="/reportes" icon={<ChartNoAxesColumn {...ICONO} />}>Reportes</Item>
         {u.role === "admin" && (

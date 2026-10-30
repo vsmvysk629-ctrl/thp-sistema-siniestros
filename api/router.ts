@@ -6,6 +6,7 @@ import { expedienteRouter } from "./routers/expediente";
 import { siniestrosRouter } from "./routers/siniestros";
 import { tableroRouter } from "./routers/tablero";
 import { usuariosRouter } from "./routers/usuarios";
+import { seguimientoRouter } from "./routers/seguimiento";
 
 export const appRouter = createRouter({
   auth: authRouter,
@@ -15,6 +16,7 @@ export const appRouter = createRouter({
   expediente: expedienteRouter,
   tablero: tableroRouter,
   usuarios: usuariosRouter,
+  seguimiento: seguimientoRouter,
 });
 
 export type AppRouter = typeof appRouter;

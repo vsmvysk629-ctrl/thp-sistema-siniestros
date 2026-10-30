@@ -38,6 +38,8 @@ Las pruebas borran y recrean la base, así que solo corren contra una base cuyo 
 
 Los archivos del expediente (PDF, fotos, Word, Excel; hasta 10 MB) se guardan en MySQL, así que el respaldo de la base los incluye.
 
+## Seguimiento (1C)
+Cada hora el servidor (y al abrir Seguimiento) propone mensajes para siniestros detenidos: documentos que faltan, información que pide la aseguradora, aseguradora sin respuesta y pagos pendientes. Solo un administrador los aprueba; el responsable los envía desde su WhatsApp o correo y marca "Ya lo envié". El sistema no envía nada.
+
 ## Siguientes etapas
-- 1C Seguimiento: proceso diario que genera tareas y borradores por aprobar (nada se envía al cliente).
 - Ajustes que pida la oficina al usar esta versión.

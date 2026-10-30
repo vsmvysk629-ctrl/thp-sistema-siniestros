@@ -370,3 +370,31 @@ describe("archivos del expediente", () => {
     await expect(callerDe(ej1).expediente.subirArchivo({ siniestroId: a.id, documentoId: docB.id, nombre: "a.pdf", tipo: "application/pdf", base64: pdf })).rejects.toThrow(/no encontrado/);
   });
 });
+
+describe("seguimiento (1C)", () => {
+  it("propone, no repite, solo el admin aprueba y el envío queda en la bitácora", async () => {
+    const { id } = await callerDe(ej1).siniestros.create(alta());
+    const l1 = await callerDe(ej1).seguimiento.lista();
+    const mio = l1.porAprobar.filter((b) => b.siniestroId === id);
+    expect(mio.map((b) => b.motivo)).toEqual(["documentos"]);
+    expect(mio[0].para).toBe("cliente");
+    // No se repite al volver a abrir.
+    expect((await callerDe(ej1).seguimiento.lista()).porAprobar.filter((b) => b.siniestroId === id)).toHaveLength(1);
+    // Otro ejecutivo no lo ve; el ejecutivo no aprueba.
+    expect((await callerDe(ej2).seguimiento.lista()).porAprobar.some((b) => b.siniestroId === id)).toBe(false);
+    await expect(callerDe(ej1).seguimiento.aprobar({ id: mio[0].id, texto: "x" })).rejects.toThrow();
+    await expect(callerDe(consulta).seguimiento.lista()).rejects.toThrow();
+    // No se envía antes de aprobar.
+    await expect(callerDe(ej1).seguimiento.marcarEnviado({ id: mio[0].id })).rejects.toThrow(/aprobado/);
+    await callerDe(ej1).seguimiento.editar({ id: mio[0].id, texto: "Texto corregido por la ejecutiva" });
+    await callerDe(admin).seguimiento.aprobar({ id: mio[0].id, texto: "Texto final aprobado" });
+    const l2 = await callerDe(ej1).seguimiento.lista();
+    expect(l2.porEnviar.find((b) => b.id === mio[0].id)?.texto).toBe("Texto final aprobado");
+    expect(await callerDe(ej1).seguimiento.conteo()).toBeGreaterThan(0);
+    await callerDe(ej1).seguimiento.marcarEnviado({ id: mio[0].id });
+    const exp = await callerDe(ej1).siniestros.get({ id });
+    expect(exp.eventos.some((e) => /Se envió mensaje al cliente/.test(e.nota ?? ""))).toBe(true);
+    // Recién enviado: no se vuelve a proponer de inmediato.
+    expect((await callerDe(ej1).seguimiento.lista()).porAprobar.some((b) => b.siniestroId === id)).toBe(false);
+  });
+});
