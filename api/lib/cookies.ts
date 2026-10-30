@@ -1,17 +1,16 @@
 import type { CookieOptions } from "hono/utils/cookie";
 
-function isLocalhost(headers: Headers): boolean {
-  const host = headers.get("host") || "";
-  return host.startsWith("localhost:") || host.startsWith("127.0.0.1:");
-}
-
+/**
+ * La cookie de sesión solo se marca "secure" cuando la conexión es HTTPS (Railway, túnel)
+ * o si se fuerza con COOKIE_SECURE=true. En la red de la oficina (http://IP-de-la-mini-PC:3000)
+ * el navegador descartaría una cookie "secure" y nadie podría entrar.
+ */
 export function getSessionCookieOptions(headers: Headers): CookieOptions {
-  const localhost = isLocalhost(headers);
-
+  const https = headers.get("x-forwarded-proto")?.split(",")[0].trim() === "https" || process.env.COOKIE_SECURE === "true";
   return {
     httpOnly: true,
     path: "/",
-    sameSite: localhost ? "Lax" : "None",
-    secure: !localhost,
+    sameSite: "Lax",
+    secure: https,
   };
 }

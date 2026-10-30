@@ -34,6 +34,8 @@ npm test     # usa TEST_DATABASE_URL o mysql://sin:sin@localhost:3306/siniestros
 Las pruebas borran y recrean la base, así que solo corren contra una base cuyo nombre termina en `_test`. Se usan solo datos ficticios.
 
 ## Producción
+En la mini PC de la oficina: `docker compose up -d --build` (guía completa en `docs/instalacion-mini-pc.md`).
+
 `npm run build && npm start` (o el `Dockerfile`). Al arrancar aplica migraciones, crea Quálitas, Atlas y Potosí si faltan (y las demás aseguradoras de México como inactivas) y crea el primer administrador con `ADMIN_USERNAME`/`ADMIN_PASSWORD` (deberá cambiar la contraseña al entrar). Variables en `.env.example`.
 
 Los archivos del expediente (PDF, fotos, Word, Excel; hasta 10 MB) se guardan en MySQL, así que el respaldo de la base los incluye.
